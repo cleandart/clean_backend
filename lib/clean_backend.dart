@@ -16,3 +16,4 @@ part 'src/data_provider.dart';
 part 'src/mongo_provider.dart';
 part 'src/publisher.dart';
 part 'src/backend.dart';
+part 'src/request_handler.dart';
