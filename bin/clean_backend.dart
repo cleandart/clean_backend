@@ -10,25 +10,12 @@ import 'package:static_file_handler/static_file_handler.dart';
 
 void main() {
   Backend backend;
-  YamlMap config = loadConfig();
-  YamlMap dbConfig = config["database"];
-  String dbUrl = "mongodb://${dbConfig["username"]}:${dbConfig["password"]}@${dbConfig["host"]}:${dbConfig["port"]}/${dbConfig["database"]}";
+ // YamlMap config = loadConfig();
 
-  MongoProvider mongo = new MongoProvider(dbUrl);
-  Publisher publisher = new Publisher();
-  StaticFileHandler fileHandler = new StaticFileHandler.serveFolder(config["root_dir"]);
-  
-  publisher.publish('persons', (_) {
-    return mongo.collection("persons");
-  });
-  
-  publisher.publish('personsOlderThan24', (_) {
-    return mongo.collection("persons").find({"age" : {'\$gt' : 24}});
-  });
-  
-  mongo.initialize(config["collections"]).then((_) {
-    backend = new Backend(mongo, publisher, fileHandler, host: config["host"], port: config["port"])..listen();
-  });
+  StaticFileHandler fileHandler = new StaticFileHandler.serveFolder('C:/Users/MatúšMaty/Documents/GitHub/');
+  RequestHandler requestHandler = new RequestHandler();
+
+  backend = new Backend( fileHandler, requestHandler)..listen();
 }
 
 YamlMap loadConfig() {
