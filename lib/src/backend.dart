@@ -42,6 +42,7 @@ class Backend {
             ..write(JSON.encode(response))
               ..close();
       }).catchError((e){
+        print('Error: $e');
         request.response
           ..headers.add("Access-Control-Allow-Origin", "*") // I do not know why this is needed
             ..headers.contentType = ContentType.parse("application/json")
