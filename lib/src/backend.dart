@@ -38,16 +38,16 @@ class Backend {
       _splitAndProcessRequests(requests).then((response) {
         request.response
           ..headers.add("Access-Control-Allow-Origin", "*") // I do not know why this is needed
-            ..headers.contentType = ContentType.parse("application/json")
-            ..write(JSON.encode(response))
-              ..close();
+          ..headers.contentType = ContentType.parse("application/json")
+          ..write(JSON.encode(response))
+          ..close();
       }).catchError((e){
         print('Error: $e');
         request.response
           ..headers.add("Access-Control-Allow-Origin", "*") // I do not know why this is needed
-            ..headers.contentType = ContentType.parse("application/json")
-            ..statusCode = HttpStatus.BAD_REQUEST
-              ..close();
+          ..headers.contentType = ContentType.parse("application/json")
+          ..statusCode = HttpStatus.BAD_REQUEST
+          ..close();
       });
     });
   }
@@ -57,10 +57,7 @@ class Backend {
 
     final List responses = new List();
     //processingFunc will be function for processing one request
-    var processingFunc = (Map req) {
-     return requestHandler.handleRequest(req["request"]["name"], req["request"])
-       .then((response) => {'id': req["id"], 'response': response});
-      };
+    var processingFunc = (Map req) => requestHandler.handleRequest(req["request"]["name"], req["request"]);
 
     //now you need to call on each element of requests function processingFunc
     //this calls are asynchronous but must run in seqencial order
@@ -69,11 +66,11 @@ class Backend {
     // execution all of next functions and complete returned future with error
     Future.forEach(
       requests,
-      (oneRequest) => processingFunc(oneRequest)
-          .then((oneResponse){
-            print(oneResponse);
-            responses.add(oneResponse);
-            print("RESPONSE: ${oneResponse}");
+      (request) => processingFunc(request)
+          .then((response){
+            print(response);
+            responses.add({'id': request["id"], 'response': response});
+            print("RESPONSE: ${response}");
           }))
       .then(
         (_)=>c.complete(responses))
