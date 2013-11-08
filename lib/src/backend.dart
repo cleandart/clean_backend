@@ -57,7 +57,10 @@ class Backend {
 
     final List responses = new List();
     //processingFunc will be function for processing one request
-    var processingFunc = (req) => requestHandler.handleRequest(req["request"].name, req["request"]);
+    var processingFunc = (Map req) {
+     return requestHandler.handleRequest(req["request"]["name"], req["request"])
+       .then((response) => {'id': req["id"], 'response': response});
+      };
 
     //now you need to call on each element of requests function processingFunc
     //this calls are asynchronous but must run in seqencial order
@@ -66,9 +69,16 @@ class Backend {
     // execution all of next functions and complete returned future with error
     Future.forEach(
       requests,
-      (oneRequest) => processingFunc(oneRequest).then((oneResponse){responses.add(oneResponse); print("RESPONSE: ${oneResponse}");})
-    ).then((_)=>c.complete(responses))
-     .catchError((e)=> c.completeError(e));
+      (oneRequest) => processingFunc(oneRequest)
+          .then((oneResponse){
+            print(oneResponse);
+            responses.add(oneResponse);
+            print("RESPONSE: ${oneResponse}");
+          }))
+      .then(
+        (_)=>c.complete(responses))
+     .catchError(
+         (e)=> c.completeError(e));
 
     return c.future;
   }
