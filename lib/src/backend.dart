@@ -26,57 +26,9 @@ class Backend {
       print("Listening on ${server.address.address}:${server.port}");
 
       router
-        ..serve(new UrlPattern(r'/resources')).listen(_serveResources) // why only on resources and not everything?
+        ..serve(new UrlPattern(r'/resources')).listen(requestHandler.serveHttpRequest) // why only on resources and not everything?
         ..defaultStream.listen(fileHandler.handleRequest); // and maybe we can set this as deafault to requestHandler?
     });
   }
 
-  void _serveResources(request) {
-    HttpBodyHandler.processRequest(request).then((HttpBody body) {
-      List requests = JSON.decode(body.body); // requests are request_list from  performHttpRequest function in clean_ajax, server.dart
-
-      _splitAndProcessRequests(requests).then((response) {
-        request.response
-          ..headers.add("Access-Control-Allow-Origin", "*") // I do not know why this is needed
-          ..headers.contentType = ContentType.parse("application/json")
-          ..write(JSON.encode(response))
-          ..close();
-      }).catchError((e){
-        print('Error: $e');
-        request.response
-          ..headers.add("Access-Control-Allow-Origin", "*") // I do not know why this is needed
-          ..headers.contentType = ContentType.parse("application/json")
-          ..statusCode = HttpStatus.BAD_REQUEST
-          ..close();
-      });
-    });
-  }
-
-  Future<List> _splitAndProcessRequests(List requests) {
-    Completer c = new Completer();
-
-    final List responses = new List();
-    //processingFunc will be function for processing one request
-    var processingFunc = (Map req) => requestHandler.handleRequest(req["request"]["name"], req["request"]);
-
-    //now you need to call on each element of requests function processingFunc
-    //this calls are asynchronous but must run in seqencial order
-    //results from calls are collected inside response
-    //if you encounter error durig execution of any fuction run you end
-    // execution all of next functions and complete returned future with error
-    Future.forEach(
-      requests,
-      (request) => processingFunc(request)
-          .then((response){
-            print(response);
-            responses.add({'id': request["id"], 'response': response});
-            print("RESPONSE: ${response}");
-          }))
-      .then(
-        (_)=>c.complete(responses))
-     .catchError(
-         (e)=> c.completeError(e));
-
-    return c.future;
-  }
 }
