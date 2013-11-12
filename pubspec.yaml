@@ -4,7 +4,7 @@ dependencies:
   clean_ajax:
     git:
       ref: rebuilding_arch
-      url: https://github.com/cleandart/clean_ajax.git
+      url: https://github.com/cleandart/clean_ajax
   http_server: any
   mongo_dart: any
   path: any
