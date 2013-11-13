@@ -4,14 +4,21 @@
 
 import 'package:clean_backend/clean_backend.dart';
 import 'package:static_file_handler/static_file_handler.dart';
+import 'dart:io';
 
-import 'package:clean_ajax/server.dart';
+class SimpleRequestHandler implements HttpRequestHandler {
+  handleHttpRequest(HttpRequest httpRequest) {
+    print('incomming HttpRequest:$httpRequest');
+    httpRequest.response
+      ..statusCode = HttpStatus.OK
+      ..close();
+  }
+}
 
 void main() {
   Backend backend;
 
   StaticFileHandler fileHandler = new StaticFileHandler.serveFolder('/home/maty/vacuumlabs/git/');
-  RequestHandler requestHandler = new RequestHandler();
-
+  SimpleRequestHandler requestHandler = new SimpleRequestHandler();
   backend = new Backend(fileHandler, requestHandler)..listen();
 }
