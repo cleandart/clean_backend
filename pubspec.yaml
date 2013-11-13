@@ -2,7 +2,9 @@ name: clean_backend
 description: A sample command-line application
 dependencies:
   clean_ajax:
-    git: https://github.com/cleandart/clean_ajax
+    git:
+      ref: rebuilding_arch
+      url: https://github.com/cleandart/clean_ajax
   route: any
   static_file_handler: any
   unittest: any
