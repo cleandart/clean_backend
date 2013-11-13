@@ -8,7 +8,7 @@ import '../lib/clean_backend.dart';
 import 'package:yaml/yaml.dart';
 import 'package:static_file_handler/static_file_handler.dart';
 
-import 'package:clean_ajax/clean_server.dart';
+import 'package:clean_ajax/server.dart';
 
 void main() {
   Backend backend;
