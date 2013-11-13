@@ -1,10 +1,8 @@
 name: clean_backend
 description: A sample command-line application
 dependencies:
-  mongo_dart: any
+  clean_ajax:
+    git: https://github.com/cleandart/clean_ajax
   route: any
-  yaml: any
-  http_server: any
-  path: any
   static_file_handler: any
-#  unittest: any
+  unittest: any
