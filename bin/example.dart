@@ -8,9 +8,10 @@ import 'dart:io';
 
 class SimpleRequestHandler implements HttpRequestHandler {
   handleHttpRequest(HttpRequest httpRequest) {
-    print('incomming HttpRequest:$httpRequest');
+    print('incoming HttpRequest:$httpRequest');
     httpRequest.response
-      ..statusCode = HttpStatus.OK
+      ..headers.contentType = ContentType.parse("text/html")
+      ..write('<body>Response to request.</body>')
       ..close();
   }
 }
@@ -18,7 +19,7 @@ class SimpleRequestHandler implements HttpRequestHandler {
 void main() {
   Backend backend;
 
-  StaticFileHandler fileHandler = new StaticFileHandler.serveFolder('/home/maty/vacuumlabs/git/');
+  StaticFileHandler fileHandler = new StaticFileHandler.serveFolder('.');
   SimpleRequestHandler requestHandler = new SimpleRequestHandler();
   backend = new Backend(fileHandler, requestHandler)..listen();
 }
