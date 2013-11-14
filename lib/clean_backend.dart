@@ -5,20 +5,24 @@
 library clean_backend;
 
 import 'dart:io';
+export 'dart:io' show HttpRequest;
 import 'dart:async';
 import 'package:route/server.dart';
 import 'package:static_file_handler/static_file_handler.dart';
 
-import 'package:clean_ajax/server.dart';
+abstract class HttpRequestHandler
+{
+  void handleHttpRequest(HttpRequest httpRequest);
+}
 
 class Backend {
   StaticFileHandler fileHandler;
   HttpServer server;
   String host;
   int port;
-  RequestHandler requestHandler;
+  HttpRequestHandler requestHandler;
 
-  Backend(StaticFileHandler this.fileHandler,RequestHandler this.requestHandler, {String host: "0.0.0.0", int port: 8080}) {
+  Backend(StaticFileHandler this.fileHandler,HttpRequestHandler this.requestHandler, {String host: "0.0.0.0", int port: 8080}) {
     this.host = host;
     this.port = port;
   }
@@ -33,7 +37,7 @@ class Backend {
       print("Listening on ${server.address.address}:${server.port}");
 
       router
-        ..serve(new UrlPattern(r'/resources')).listen(requestHandler.serveHttpRequest) // why only on resources and not everything?
+        ..serve(new UrlPattern(r'/resources')).listen(requestHandler.handleHttpRequest) // why only on resources and not everything?
         ..defaultStream.listen(fileHandler.handleRequest); // and maybe we can set this as deafault to requestHandler?
     });
   }
