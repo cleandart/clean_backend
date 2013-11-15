@@ -5,40 +5,60 @@
 library clean_backend;
 
 import 'dart:io';
-export 'dart:io' show HttpRequest;
 import 'dart:async';
 import 'package:route/server.dart';
 import 'package:static_file_handler/static_file_handler.dart';
 
-abstract class HttpRequestHandler
-{
-  void handleHttpRequest(HttpRequest httpRequest);
-}
+
+typedef void HttpRequestHandler(HttpRequest request);
 
 class Backend {
-  StaticFileHandler fileHandler;
   HttpServer server;
   String host;
   int port;
-  HttpRequestHandler requestHandler;
+  Router router;
+  HttpHeaders _defaulHttpHeaders = null;
 
-  Backend(StaticFileHandler this.fileHandler,HttpRequestHandler this.requestHandler, {String host: "0.0.0.0", int port: 8080}) {
+
+  void addDefaultHttpHeader(headers) {
+    _defaulHttpHeaders = headers;
+  }
+
+
+  void addView(Pattern url,HttpRequestHandler handler) {
+    if (router != null) {
+      router.serve(url).listen((httpRequest) {
+        if (_defaulHttpHeaders != null) {
+          _defaulHttpHeaders.forEach((name,value) => httpRequest.response.headers.add(name,value));
+        }
+        return handler(httpRequest);
+      });
+    }
+  }
+
+  void addStaticView(Pattern url, String path) {
+    if (router != null) {
+      StaticFileHandler fileHandler = new StaticFileHandler.serveFolder(path);
+      router.serve(url).listen(fileHandler.handleRequest);
+    }
+  }
+
+  void addNotFoundView(HttpRequestHandler handler) {
+    if (router != null) router.defaultStream.listen(handler);
+  }
+
+  Backend({String host: "0.0.0.0", int port: 8080}) {
     this.host = host;
     this.port = port;
   }
 
-  void listen() {
+  Future listen() {
     print("Starting HTTP server");
 
-    HttpServer.bind(host, port).then((HttpServer server) {
+    return HttpServer.bind(host, port).then((HttpServer server) {
       this.server = server;
-      var router = new Router(server);
-
+      router = new Router(server);
       print("Listening on ${server.address.address}:${server.port}");
-
-      router
-        ..serve(new UrlPattern(r'/resources')).listen(requestHandler.handleHttpRequest) // why only on resources and not everything?
-        ..defaultStream.listen(fileHandler.handleRequest); // and maybe we can set this as deafault to requestHandler?
     });
   }
 
