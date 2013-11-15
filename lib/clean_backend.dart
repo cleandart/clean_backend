@@ -9,7 +9,6 @@ import 'dart:async';
 import 'package:route/server.dart';
 import 'package:static_file_handler/static_file_handler.dart';
 
-
 typedef void HttpRequestHandler(HttpRequest request);
 
 class Backend {
@@ -27,7 +26,6 @@ class Backend {
   void addDefaultHttpHeader(name, value) {
     _defaulHttpHeaders.add({'name': name, 'value': value});
   }
-
 
   void addView(Pattern url,HttpRequestHandler handler) {
     router.serve(url).listen((HttpRequest httpRequest) {
@@ -47,7 +45,6 @@ class Backend {
     router.defaultStream.listen(handler);
   }
 
-
   Future listen() {
     print("Starting HTTP server");
     return HttpServer.bind(host, port).then((HttpServer server) {
@@ -56,5 +53,4 @@ class Backend {
       print("Listening on ${server.address.address}:${server.port}");
     });
   }
-
 }
