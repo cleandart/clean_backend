@@ -17,19 +17,18 @@ class Backend {
   String host;
   int port;
   Router router;
-  HttpHeaders _defaulHttpHeaders = null;
+  List _defaulHttpHeaders = new List();
 
-
-  void addDefaultHttpHeader(headers) {
-    _defaulHttpHeaders = headers;
+  void addDefaultHttpHeader(name, value) {
+    _defaulHttpHeaders.add({'name': name, 'value': value});
   }
 
 
   void addView(Pattern url,HttpRequestHandler handler) {
     if (router != null) {
-      router.serve(url).listen((httpRequest) {
+      router.serve(url).listen((HttpRequest httpRequest) {
         if (_defaulHttpHeaders != null) {
-          _defaulHttpHeaders.forEach((name,value) => httpRequest.response.headers.add(name,value));
+          _defaulHttpHeaders.forEach((header) => httpRequest.response.headers.add(header['name'],header['value']));
         }
         return handler(httpRequest);
       });

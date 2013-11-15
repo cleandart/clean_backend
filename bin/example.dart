@@ -18,7 +18,10 @@ class SimpleRequestHandler {
 void main() {
   Backend backend = new Backend();
   SimpleRequestHandler requestHandler = new SimpleRequestHandler();
+
+
   backend.listen().then((_) {
+    backend.addDefaultHttpHeader('Access-Control-Allow-Origin','*');
     backend.addView(r'/resources', requestHandler.handleHttpRequest);
     backend.addStaticView(new RegExp(r'/.*'), '.');
   });
