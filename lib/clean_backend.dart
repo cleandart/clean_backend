@@ -5,41 +5,52 @@
 library clean_backend;
 
 import 'dart:io';
-export 'dart:io' show HttpRequest;
 import 'dart:async';
 import 'package:route/server.dart';
 import 'package:static_file_handler/static_file_handler.dart';
 
-abstract class HttpRequestHandler
-{
-  void handleHttpRequest(HttpRequest httpRequest);
-}
+typedef void HttpRequestHandler(HttpRequest request);
 
 class Backend {
-  StaticFileHandler fileHandler;
   HttpServer server;
   String host;
   int port;
-  HttpRequestHandler requestHandler;
+  Router router;
+  List _defaulHttpHeaders = new List();
 
-  Backend(StaticFileHandler this.fileHandler,HttpRequestHandler this.requestHandler, {String host: "0.0.0.0", int port: 8080}) {
+  Backend({String host: "0.0.0.0", int port: 8080}) {
     this.host = host;
     this.port = port;
   }
 
-  void listen() {
-    print("Starting HTTP server");
+  void addDefaultHttpHeader(name, value) {
+    _defaulHttpHeaders.add({'name': name, 'value': value});
+  }
 
-    HttpServer.bind(host, port).then((HttpServer server) {
-      this.server = server;
-      var router = new Router(server);
-
-      print("Listening on ${server.address.address}:${server.port}");
-
-      router
-        ..serve(new UrlPattern(r'/resources')).listen(requestHandler.handleHttpRequest) // why only on resources and not everything?
-        ..defaultStream.listen(fileHandler.handleRequest); // and maybe we can set this as deafault to requestHandler?
+  void addView(Pattern url,HttpRequestHandler handler) {
+    router.serve(url).listen((HttpRequest httpRequest) {
+      if (_defaulHttpHeaders != null) {
+        _defaulHttpHeaders.forEach((header) => httpRequest.response.headers.add(header['name'],header['value']));
+      }
+      return handler(httpRequest);
     });
   }
 
+  void addStaticView(Pattern url, String path) {
+    StaticFileHandler fileHandler = new StaticFileHandler.serveFolder(path);
+    router.serve(url).listen(fileHandler.handleRequest);
+  }
+
+  void addNotFoundView(HttpRequestHandler handler) {
+    router.defaultStream.listen(handler);
+  }
+
+  Future listen() {
+    print("Starting HTTP server");
+    return HttpServer.bind(host, port).then((HttpServer server) {
+      this.server = server;
+      router = new Router(server);
+      print("Listening on ${server.address.address}:${server.port}");
+    });
+  }
 }

@@ -3,11 +3,10 @@
 // BSD-style license that can be found in the LICENSE file.
 
 import 'package:clean_backend/clean_backend.dart';
-import 'package:static_file_handler/static_file_handler.dart';
 import 'dart:io';
 
-class SimpleRequestHandler implements HttpRequestHandler {
-  handleHttpRequest(HttpRequest httpRequest) {
+class SimpleRequestHandler {
+  void handleHttpRequest(HttpRequest httpRequest) {
     print('incoming HttpRequest:$httpRequest');
     httpRequest.response
       ..headers.contentType = ContentType.parse("text/html")
@@ -17,9 +16,13 @@ class SimpleRequestHandler implements HttpRequestHandler {
 }
 
 void main() {
-  Backend backend;
-
-  StaticFileHandler fileHandler = new StaticFileHandler.serveFolder('.');
+  Backend backend = new Backend();
   SimpleRequestHandler requestHandler = new SimpleRequestHandler();
-  backend = new Backend(fileHandler, requestHandler)..listen();
+
+
+  backend.listen().then((_) {
+    backend.addDefaultHttpHeader('Access-Control-Allow-Origin','*');
+    backend.addView(r'/resources', requestHandler.handleHttpRequest);
+    backend.addStaticView(new RegExp(r'/.*'), '.');
+  });
 }
