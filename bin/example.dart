@@ -16,13 +16,8 @@ class SimpleRequestHandler {
 }
 
 void main() {
-  Backend backend;
-
+  Backend backend = new Backend();
   SimpleRequestHandler requestHandler = new SimpleRequestHandler();
-
-  var test = new RegExp(r'/web/.*').hasMatch('/web/index.html');
-
-  backend = new Backend();
   backend.listen().then((_) {
     backend.addView(r'/resources', requestHandler.handleHttpRequest);
     backend.addStaticView(new RegExp(r'/.*'), '.');
