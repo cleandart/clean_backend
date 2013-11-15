@@ -19,41 +19,37 @@ class Backend {
   Router router;
   List _defaulHttpHeaders = new List();
 
+  Backend({String host: "0.0.0.0", int port: 8080}) {
+    this.host = host;
+    this.port = port;
+  }
+
   void addDefaultHttpHeader(name, value) {
     _defaulHttpHeaders.add({'name': name, 'value': value});
   }
 
 
   void addView(Pattern url,HttpRequestHandler handler) {
-    if (router != null) {
-      router.serve(url).listen((HttpRequest httpRequest) {
-        if (_defaulHttpHeaders != null) {
-          _defaulHttpHeaders.forEach((header) => httpRequest.response.headers.add(header['name'],header['value']));
-        }
-        return handler(httpRequest);
-      });
-    }
+    router.serve(url).listen((HttpRequest httpRequest) {
+      if (_defaulHttpHeaders != null) {
+        _defaulHttpHeaders.forEach((header) => httpRequest.response.headers.add(header['name'],header['value']));
+      }
+      return handler(httpRequest);
+    });
   }
 
   void addStaticView(Pattern url, String path) {
-    if (router != null) {
-      StaticFileHandler fileHandler = new StaticFileHandler.serveFolder(path);
-      router.serve(url).listen(fileHandler.handleRequest);
-    }
+    StaticFileHandler fileHandler = new StaticFileHandler.serveFolder(path);
+    router.serve(url).listen(fileHandler.handleRequest);
   }
 
   void addNotFoundView(HttpRequestHandler handler) {
-    if (router != null) router.defaultStream.listen(handler);
+    router.defaultStream.listen(handler);
   }
 
-  Backend({String host: "0.0.0.0", int port: 8080}) {
-    this.host = host;
-    this.port = port;
-  }
 
   Future listen() {
     print("Starting HTTP server");
-
     return HttpServer.bind(host, port).then((HttpServer server) {
       this.server = server;
       router = new Router(server);
