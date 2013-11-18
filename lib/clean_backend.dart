@@ -37,7 +37,11 @@ class Backend {
   Router router;
   List _defaulHttpHeaders = new List();
 
-  Stream<Request> onPrepareRequest;
+
+  final StreamController<Request> _onPrepareRequestController =
+      new StreamController.broadcast();
+
+  Stream<Request> get onPrepareRequest => _onPrepareRequestController.stream;
 
   Backend({String host: "0.0.0.0", int port: 8080}) {
     this.host = host;
@@ -48,17 +52,24 @@ class Backend {
     _defaulHttpHeaders.add({'name': name, 'value': value});
   }
 
+  void _prepareRequestHandler(HttpRequest httpRequest, RequestHandler handler) {
+    HttpBodyHandler.processRequest(httpRequest).then((HttpBody body) {
+      Request request = new Request(body.type, body.body, httpRequest.response, httpRequest.headers, httpRequest);
+      _onPrepareRequestController.add(request);
+      handler(request);
+    });
+  }
+
   void addView(Pattern url,RequestHandler handler) {
     router.serve(url).listen((HttpRequest httpRequest) {
       if (_defaulHttpHeaders != null) {
         _defaulHttpHeaders.forEach((header) => httpRequest.response.headers.add(header['name'],header['value']));
       }
-      HttpBodyHandler.processRequest(httpRequest).then((HttpBody body) {
-        Request request = new Request(body.type, body.body, httpRequest.response, httpRequest.headers, httpRequest);
-        return handler(request);
-      });
+      _prepareRequestHandler(httpRequest, handler);
     });
   }
+
+
 
   void addStaticView(Pattern url, String path) {
     StaticFileHandler fileHandler = new StaticFileHandler.serveFolder(path);
@@ -67,10 +78,7 @@ class Backend {
 
   void addNotFoundView(RequestHandler handler) {
     router.defaultStream.listen((HttpRequest httpRequest) {
-      HttpBodyHandler.processRequest(httpRequest).then((HttpBody body) {
-        Request request = new Request(body.type, body.body, httpRequest.response, httpRequest.headers, httpRequest);
-        return handler(request);
-      });
+      _prepareRequestHandler(httpRequest, handler);
     });
   }
 
