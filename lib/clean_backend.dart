@@ -111,7 +111,7 @@ class Backend {
   bool isAuthenticated(HttpHeaders headers){
     if (headers[HttpHeaders.COOKIE] == null) return false;
     headers[HttpHeaders.COOKIE].forEach((String cookieString){
-
+      Cookie cookie = Cookie.fromSetCookieValue(cookieString);
 
     });
 
