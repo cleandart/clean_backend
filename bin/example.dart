@@ -6,9 +6,9 @@ import 'package:clean_backend/clean_backend.dart';
 import 'dart:io';
 
 class SimpleRequestHandler {
-  void handleHttpRequest(HttpRequest httpRequest) {
-    print('incoming HttpRequest:$httpRequest');
-    httpRequest.response
+  void handleHttpRequest(Request request) {
+    print('incoming HttpRequest:$request');
+    request.response
       ..headers.contentType = ContentType.parse("text/html")
       ..write('<body>Response to request.</body>')
       ..close();

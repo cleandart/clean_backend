@@ -8,8 +8,27 @@ import 'dart:io';
 import 'dart:async';
 import 'package:route/server.dart';
 import 'package:static_file_handler/static_file_handler.dart';
+import 'package:http_server/http_server.dart';
 
-typedef void HttpRequestHandler(HttpRequest request);
+typedef void RequestHandler(Request request);
+
+class Request {
+  final String type;
+  final dynamic body;
+  final HttpResponse response;
+  final HttpHeaders headers;
+  final HttpRequest httpRequest;
+  final Map<String, dynamic> meta = {};
+
+  Request(
+      this.type,
+      this.body,
+      this.response,
+      this.headers,
+      this.httpRequest
+      );
+
+}
 
 class Backend {
   HttpServer server;
@@ -17,6 +36,8 @@ class Backend {
   int port;
   Router router;
   List _defaulHttpHeaders = new List();
+
+  Stream<Request> onPrepareRequest;
 
   Backend({String host: "0.0.0.0", int port: 8080}) {
     this.host = host;
@@ -27,12 +48,15 @@ class Backend {
     _defaulHttpHeaders.add({'name': name, 'value': value});
   }
 
-  void addView(Pattern url,HttpRequestHandler handler) {
+  void addView(Pattern url,RequestHandler handler) {
     router.serve(url).listen((HttpRequest httpRequest) {
       if (_defaulHttpHeaders != null) {
         _defaulHttpHeaders.forEach((header) => httpRequest.response.headers.add(header['name'],header['value']));
       }
-      return handler(httpRequest);
+      HttpBodyHandler.processRequest(httpRequest).then((HttpBody body) {
+        Request request = new Request(body.type, body.body, httpRequest.response, httpRequest.headers, httpRequest);
+        return handler(request);
+      });
     });
   }
 
@@ -41,8 +65,13 @@ class Backend {
     router.serve(url).listen(fileHandler.handleRequest);
   }
 
-  void addNotFoundView(HttpRequestHandler handler) {
-    router.defaultStream.listen(handler);
+  void addNotFoundView(RequestHandler handler) {
+    router.defaultStream.listen((HttpRequest httpRequest) {
+      HttpBodyHandler.processRequest(httpRequest).then((HttpBody body) {
+        Request request = new Request(body.type, body.body, httpRequest.response, httpRequest.headers, httpRequest);
+        return handler(request);
+      });
+    });
   }
 
   Future listen() {
