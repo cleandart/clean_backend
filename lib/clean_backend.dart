@@ -6,9 +6,11 @@ library clean_backend;
 
 import 'dart:io';
 import 'dart:async';
+import 'dart:convert';
 import 'package:route/server.dart';
 import 'package:static_file_handler/static_file_handler.dart';
 import 'package:http_server/http_server.dart';
+import 'package:crypto/crypto.dart';
 
 typedef void RequestHandler(Request request);
 
@@ -19,6 +21,7 @@ class Request {
   final HttpHeaders headers;
   final HttpRequest httpRequest;
   final Map<String, dynamic> meta = {};
+  String authenticatedUserId;
 
   Request(
       this.type,
@@ -36,16 +39,19 @@ class Backend {
   int port;
   Router router;
   List _defaulHttpHeaders = new List();
-
+  Hash _hashMethod;
+  List<int> _key;
 
   final StreamController<Request> _onPrepareRequestController =
       new StreamController.broadcast();
 
   Stream<Request> get onPrepareRequest => _onPrepareRequestController.stream;
 
-  Backend({String host: "0.0.0.0", int port: 8080}) {
-    this.host = host;
-    this.port = port;
+  Backend({String this.host: "0.0.0.0", int this.port: 8080, key: null, hashMethod: null}) {
+//    this.host = host;
+//    this.port = port;
+    this._key = key;
+    this._hashMethod = hashMethod;
   }
 
   void addDefaultHttpHeader(name, value) {
@@ -90,4 +96,25 @@ class Backend {
       print("Listening on ${server.address.address}:${server.port}");
     });
   }
+
+  void authenticate(HttpResponse response, String userId, {HMAC hmac: null}){
+    if (hmac == null) hmac = new HMAC(_hashMethod, _key);
+    Utf8Codec codec = new Utf8Codec();
+    List<int> encodedUserId = codec.encode(userId);
+    hmac.add(encodedUserId);
+    List<int> encodedUserIdSignature = hmac.close();
+    String userIdSignature = codec.decode(encodedUserIdSignature);
+    Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': userIdSignature}));
+    response.headers.add(HttpHeaders.SET_COOKIE, cookie);
+  }
+
+  bool isAuthenticated(HttpHeaders headers){
+    if (headers[HttpHeaders.COOKIE] == null) return false;
+    headers[HttpHeaders.COOKIE].forEach((String cookieString){
+
+
+    });
+
+  }
+
 }

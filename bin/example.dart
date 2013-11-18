@@ -4,6 +4,7 @@
 
 import 'package:clean_backend/clean_backend.dart';
 import 'dart:io';
+import 'package:crypto/crypto.dart';
 
 class SimpleRequestHandler {
   void handleHttpRequest(Request request) {
@@ -16,13 +17,15 @@ class SimpleRequestHandler {
 }
 
 void main() {
-  Backend backend = new Backend();
+  Backend backend = new Backend(hashMethod: new SHA256(), key: [1,1,1]);
   SimpleRequestHandler requestHandler = new SimpleRequestHandler();
 
 
   backend.listen().then((_) {
     backend.addDefaultHttpHeader('Access-Control-Allow-Origin','*');
     backend.addView(r'/resources', requestHandler.handleHttpRequest);
+    backend.addView(r'/add-cookie', (request) => backend.authenticate(request.response, 'jozko12'));
     backend.addStaticView(new RegExp(r'/.*'), '.');
   });
+
 }
