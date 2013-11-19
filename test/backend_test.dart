@@ -8,59 +8,106 @@ import 'package:crypto/crypto.dart';
 import 'package:unittest/mock.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'package:route/server.dart';
+
+
+Utf8Codec codec = new Utf8Codec();
 
 class MockHMAC extends Mock implements HMAC{
-
-  MockHMAC(userIdSignature){
-    Utf8Codec codec = new Utf8Codec();
-    List<int> encodedUserIdSignature = codec.encode(userIdSignature);
-    when(callsTo('close')).alwaysReturn(encodedUserIdSignature);
+  List<int> signature;
+  bool verify(List<int> digest){
+    if (digest.length != signature.length) return false;
+    for (int i = 0; i< digest.length; i++){
+      if (digest[i] != signature[i])
+        return false;
+    }
+    return true;
+  }
+  MockHMAC(signature){
+    this.signature = signature;
+    when(callsTo('close')).alwaysReturn(signature);
   }
 }
-class MockHttpHeaders extends Mock implements HttpHeaders {
-//  void add(String type, Cookie cookie){}
-}
+class MockHttpHeaders extends Mock implements HttpHeaders {}
+class MockHttpServer extends Mock implements HttpServer {}
+class MockRouter extends Mock implements Router {}
 class MockHttpResponse extends Mock implements HttpResponse{
-//  Mock httpHeaders = new MockHttpHeaders();
   var headers = new MockHttpHeaders();
-//  MockHttpRequest() {
-//    when(callsTo('get headers')).alwaysReturn(httpHeaders);
-//  }
 }
 
 void main() {
 
   group('Backend', () {
+    Backend backend;
+    List<int> signature;
+    setUp(() {
+      signature = [0,0,0,0,0,0];
+      var _hmacFactory = () => new MockHMAC(signature);
+      MockHttpServer server = new MockHttpServer();
+      MockRouter router;
+      backend = new Backend.config(server, router, _hmacFactory);
+    });
+
     test('Authenticate test (T01).', () {
       //given
-      Backend backend = new Backend();
+
 
       MockHttpResponse response = new MockHttpResponse();
-      String userId = 'martinko.Klingáčik25';
-      MockHMAC hmac = new MockHMAC('mrtk14');
+      String userId = 'john.doe25';
 
       //when
-      backend.authenticate(response, userId, hmac: hmac);
+      backend.authenticate(response, userId);
 
       //then
       var cookie = response.headers.getLogs(callsTo('add', HttpHeaders.SET_COOKIE)).last.args[1];
-      expect(cookie.toString(), equals('authentication={"userID":"martinko.Klingáčik25","signature":"mrtk14"}'));
+      String expectedCookieValue = JSON.encode({'userID': userId, 'signature': signature});
+      expect(cookie.toString(), equals('authentication=$expectedCookieValue'));
     });
 
     test('get userId from cookies test (T02).', () {
       //given
-      Backend backend = new Backend();
-
+      String userId = 'john.doe25';
+      Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': signature}));
       MockHttpHeaders headers = new MockHttpHeaders();
-      String userId = 'martinko.Klingáčik25';
-      MockHMAC hmac = new MockHMAC('mrtk14');
+      headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn([cookie.toString()]);
 
       //when
-      backend.isAuthenticated(headers);
+      String getUserId = backend.getAuthenticatedUser(headers);
 
       //then
-      var cookie = response.headers.getLogs(callsTo('add', HttpHeaders.SET_COOKIE)).last.args[1];
-      expect(cookie.toString(), equals('authentication={"userID":"martinko.Klingáčik25","signature":"mrtk14"}'));
+      expect(getUserId, equals(userId));
+
+
+    });
+
+    test('get userId from cookies test - not existing user (T03).', () {
+      //given
+      String userId = 'john.doe25';
+      MockHttpHeaders headers = new MockHttpHeaders();
+      headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn(null);
+
+      //when
+      String getUserId = backend.getAuthenticatedUser(headers);
+
+      //then
+
+      expect(getUserId, isNull);
+
+    });
+
+    test('get userId from cookies test - bad authentication code (T04).', () {
+      //given
+      String userId = 'john.doe25';
+      Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': [0,1,0,0,0,0]}));
+      MockHttpHeaders headers = new MockHttpHeaders();
+      headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn([cookie.toString()]);
+      //when
+      String getUserId = backend.getAuthenticatedUser(headers);
+
+      //then
+
+      expect(getUserId, isNull);
+
     });
 
 

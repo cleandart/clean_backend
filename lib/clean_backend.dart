@@ -34,24 +34,22 @@ class Request {
 }
 
 class Backend {
-  HttpServer server;
-  String host;
-  int port;
-  Router router;
+  final HttpServer server;
+  final Router router;
   List _defaulHttpHeaders = new List();
-  Hash _hashMethod;
-  List<int> _key;
+  final _hmacFactory;
 
   final StreamController<Request> _onPrepareRequestController =
       new StreamController.broadcast();
 
   Stream<Request> get onPrepareRequest => _onPrepareRequestController.stream;
 
-  Backend({String this.host: "0.0.0.0", int this.port: 8080, key: null, hashMethod: null}) {
-//    this.host = host;
-//    this.port = port;
-    this._key = key;
-    this._hashMethod = hashMethod;
+  Backend.config(this.server, this.router, this._hmacFactory);
+
+  factory Backend(key, hashMethod, {String host: "0.0.0.0", int port: 8080}) {
+    var server = HttpServer.bind(host, port);
+    var router = new Router(server);
+    return new Backend.config(server, router, () => new HMAC(hashMethod, key));
   }
 
   void addDefaultHttpHeader(name, value) {
@@ -88,32 +86,36 @@ class Backend {
     });
   }
 
-  Future listen() {
-    print("Starting HTTP server");
-    return HttpServer.bind(host, port).then((HttpServer server) {
-      this.server = server;
-      router = new Router(server);
-      print("Listening on ${server.address.address}:${server.port}");
-    });
+  void _stringToHash(String value, HMAC hmac){
+
+    Utf8Codec codec = new Utf8Codec();
+    List<int> encodedUserId = codec.encode(value);
+    hmac.add(encodedUserId);
   }
 
-  void authenticate(HttpResponse response, String userId, {HMAC hmac: null}){
-    if (hmac == null) hmac = new HMAC(_hashMethod, _key);
-    Utf8Codec codec = new Utf8Codec();
-    List<int> encodedUserId = codec.encode(userId);
-    hmac.add(encodedUserId);
-    List<int> encodedUserIdSignature = hmac.close();
-    String userIdSignature = codec.decode(encodedUserIdSignature);
+  void authenticate(HttpResponse response, String userId){
+    HMAC hmac = _hmacFactory();
+    _stringToHash(userId, hmac);
+    List<int> userIdSignature = hmac.close();
     Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': userIdSignature}));
     response.headers.add(HttpHeaders.SET_COOKIE, cookie);
   }
 
-  bool isAuthenticated(HttpHeaders headers){
-    if (headers[HttpHeaders.COOKIE] == null) return false;
-    headers[HttpHeaders.COOKIE].forEach((String cookieString){
-      Cookie cookie = Cookie.fromSetCookieValue(cookieString);
+  String getAuthenticatedUser(HttpHeaders headers){
+    if (headers[HttpHeaders.COOKIE] == null) return null;
 
-    });
+    for (String cookieString in headers[HttpHeaders.COOKIE]) {
+      Cookie cookie = new Cookie.fromSetCookieValue(cookieString);
+      if (cookie.name == 'authentication') {
+        HMAC hmac = _hmacFactory();
+        Map authentication = JSON.decode(cookie.value);
+        _stringToHash(authentication['userID'], hmac);
+        if (hmac.verify(authentication['signature'])){
+          return authentication['userID'];
+        }
+      }
+    }
+    return null;
 
   }
 
