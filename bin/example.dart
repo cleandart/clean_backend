@@ -37,19 +37,28 @@ class SimpleRequestHandler {
       ..write('<body>Response to authenticate request. authenticated: $userId, $cookies, $cookies2</body>')
       ..close();
   }
+
+  void handleLogoutRequest(Request request) {
+    print('incoming IsAuthenticatedRequest:$request');
+    backend.logout(request);
+    var cookies = request.headers[HttpHeaders.SET_COOKIE];
+    var cookies2 = request.headers[HttpHeaders.COOKIE];
+    request.response
+      ..headers.contentType = ContentType.parse("text/html")
+      ..write('<body>Response to logout request. cookies: $cookies, $cookies2 </body>')
+      ..close();
+  }
 }
 
 void main() {
-  Backend backend = new Backend([], new SHA256());
-  SimpleRequestHandler requestHandler = new SimpleRequestHandler(backend);
-
-
-//  backend.listen().then((_) {
+  Backend.bind([], new SHA256()).then((backend) {
+    SimpleRequestHandler requestHandler = new SimpleRequestHandler(backend);
     backend.addDefaultHttpHeader('Access-Control-Allow-Origin','*');
     backend.addView(r'/resources', requestHandler.handleHttpRequest);
     backend.addView(r'/add-cookie', requestHandler.handleAuthenticateRequest);
     backend.addView(r'/get-cookie', requestHandler.handleIsAuthenticatedRequest);
+    backend.addView(r'/logout', requestHandler.handleLogoutRequest);
     backend.addStaticView(new RegExp(r'/.*'), '.');
-//  });
+  });
 
 }

@@ -34,6 +34,10 @@ class MockRouter extends Mock implements Router {}
 class MockHttpResponse extends Mock implements HttpResponse{
   var headers = new MockHttpHeaders();
 }
+class MockRequest extends Mock implements Request {
+  var headers = new MockHttpHeaders();
+  var response = new MockHttpResponse();
+}
 
 void main() {
 
@@ -101,13 +105,30 @@ void main() {
       Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': [0,1,0,0,0,0]}));
       MockHttpHeaders headers = new MockHttpHeaders();
       headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn([cookie.toString()]);
+
       //when
       String getUserId = backend.getAuthenticatedUser(headers);
 
       //then
-
       expect(getUserId, isNull);
 
+    });
+
+    test('delete authentication cookie (T05).', (){
+      //given
+      String userId = 'john.doe25';
+      MockRequest request = new MockRequest();
+      Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': signature}));
+      request.headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn([cookie.toString()]);
+
+      //when
+      backend.logout(request);
+      cookie.maxAge = 0;
+
+      //then
+      List addedHeader = request.response.headers.getLogs(callsTo('add')).last.args;
+      expect(addedHeader[0], equals(HttpHeaders.SET_COOKIE));
+      expect(addedHeader[1].toString(), equals(cookie.toString()));
     });
 
 

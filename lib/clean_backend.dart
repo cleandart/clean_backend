@@ -46,10 +46,11 @@ class Backend {
 
   Backend.config(this.server, this.router, this._hmacFactory);
 
-  factory Backend(key, hashMethod, {String host: "0.0.0.0", int port: 8080}) {
-    var server = HttpServer.bind(host, port);
-    var router = new Router(server);
-    return new Backend.config(server, router, () => new HMAC(hashMethod, key));
+
+  static Future<Backend> bind(key, hashMethod, {String host: "0.0.0.0", int port: 8080}){
+    return HttpServer.bind(host, port).then((httpServer) {
+      var router = new Router(httpServer);
+      return new Backend.config(httpServer, router, () => new HMAC(hashMethod, key));});
   }
 
   void addDefaultHttpHeader(name, value) {
@@ -117,6 +118,18 @@ class Backend {
     }
     return null;
 
+  }
+
+  void logout(Request request){
+    if (request.headers[HttpHeaders.COOKIE] == null) return;
+    for (String cookieString in request.headers[HttpHeaders.COOKIE]) {
+
+      Cookie cookie = new Cookie.fromSetCookieValue(cookieString);
+      if (cookie.name == 'authentication') {
+        cookie.maxAge = 0;
+        request.response.headers.add(HttpHeaders.SET_COOKIE, cookie);
+      }
+    }
   }
 
 }
