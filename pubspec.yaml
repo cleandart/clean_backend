@@ -3,5 +3,4 @@ description: A sample command-line application
 dependencies:
   http_server: any
   route: any
-  static_file_handler: any
   unittest: any

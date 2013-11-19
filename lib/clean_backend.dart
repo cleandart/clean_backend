@@ -7,8 +7,8 @@ library clean_backend;
 import 'dart:io';
 import 'dart:async';
 import 'package:route/server.dart';
-import 'package:static_file_handler/static_file_handler.dart';
 import 'package:http_server/http_server.dart';
+import 'package:clean_backend/static_file_handler.dart';
 
 typedef void RequestHandler(Request request);
 
@@ -27,7 +27,6 @@ class Request {
       this.headers,
       this.httpRequest
       );
-
 }
 
 class Backend {
@@ -36,7 +35,6 @@ class Backend {
   int port;
   Router router;
   List _defaulHttpHeaders = new List();
-
 
   final StreamController<Request> _onPrepareRequestController =
       new StreamController.broadcast();
@@ -60,7 +58,7 @@ class Backend {
     });
   }
 
-  void addView(Pattern url,RequestHandler handler) {
+  void addView(Pattern url, RequestHandler handler) {
     router.serve(url).listen((HttpRequest httpRequest) {
       if (_defaulHttpHeaders != null) {
         _defaulHttpHeaders.forEach((header) => httpRequest.response.headers.add(header['name'],header['value']));
@@ -69,11 +67,9 @@ class Backend {
     });
   }
 
-
-
   void addStaticView(Pattern url, String path) {
-    StaticFileHandler fileHandler = new StaticFileHandler.serveFolder(path);
-    router.serve(url).listen(fileHandler.handleRequest);
+    StaticFileHandler fileHandler = new StaticFileHandler(path);
+    router.serve(url).listen((req) => fileHandler.handleRequest(req, ""));
   }
 
   void addNotFoundView(RequestHandler handler) {
