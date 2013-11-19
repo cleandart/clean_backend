@@ -4,7 +4,7 @@
 
 //Forked from https://github.com/DanieleSalatti/static-file-handler/blob/master/lib/static_file_handler.dart
 
-library static_file_handler;
+library clean_backend.static_file_handler;
 
 import 'dart:async';
 import 'dart:io';
@@ -47,10 +47,13 @@ class StaticFileHandler {
       response.close();
     }
 
-    void pipeToResponse(Stream fileContent, HttpResponse response) {
-      fileContent.pipe(response).then((_) => response.close()).catchError(
+    //TODO consider:
+    //var file = new File(Platform.script.toFilePath());
+    //Future<String> finishedReading = file.readAsString(encoding: Encoding.ASCII
+    void pipeToResponse(Stream<List<int>> fileContent, HttpResponse response) {
+      response.addStream(fileContent).then((_) => response.close()).catchError(
           //TODO
-        () => throw new StateError("Streaming file gone wrong.")
+        (error) => throw new StateError("Streaming file gone wrong.")
       );
     }
 
@@ -132,14 +135,14 @@ class StaticFileHandler {
    * Seeks for file at documentRoot/relativePath and depending on [request]
    * parameters it fills [request.response].
    */
-  void handleRequest(String relativePath, HttpRequest request) {
+  void handleRequest(HttpRequest request, String relativePath) {
     request.response.done.catchError(
         //TODO
-      () => throw new StateError("Error creating response")
+      (error) => throw new StateError("Error creating response")
     );
 
     //TODO check format, consider using Builder
-    String path = documentRoot + relativePath;
+    String path = documentRoot + "/" + relativePath;
 
     FileSystemEntity.type(path)
     .then((type) {
@@ -162,26 +165,27 @@ class StaticFileHandler {
   }
 
   //TODO extend list, consider moving into separate file
+  //Extensions are in format as returned by Builder.extension()
   final _extToContentType = {
-    "bz"      : "application/x-bzip",
-    "bz2"     : "application/x-bzip2",
-    "dart"    : "application/dart",
-    "exe"     : "application/octet-stream",
-    "gif"     : "image/gif",
-    "gz"      : "application/x-gzip",
-    "html"    : "text/html; charset=utf-8",  // Assumes UTF-8 files.
-    "jpg"     : "image/jpeg",
-    "js"      : "application/javascript",
-    "json"    : "application/json",
-    "mp3"     : "audio/mpeg",
-    "mp4"     : "video/mp4",
-    "pdf"     : "application/pdf",
-    "png"     : "image/png",
-    "tar.gz"  : "application/x-tar",
-    "tgz"     : "application/x-tar",
-    "txt"     : "text/plain; charset=utf-8",  // Assumes UTF-8 files.
-    "webp"    : "image/webp",
-    "webm"    : "video/webm",
-    "zip"     : "application/zip"
+    ".bz"      : "application/x-bzip",
+    ".bz2"     : "application/x-bzip2",
+    ".dart"    : "application/dart",
+    ".exe"     : "application/octet-stream",
+    ".gif"     : "image/gif",
+    ".gz"      : "application/x-gzip",
+    ".html"    : "text/html; charset=utf-8",  // Assumes UTF-8 files.
+    ".jpg"     : "image/jpeg",
+    ".js"      : "application/javascript",
+    ".json"    : "application/json",
+    ".mp3"     : "audio/mpeg",
+    ".mp4"     : "video/mp4",
+    ".pdf"     : "application/pdf",
+    ".png"     : "image/png",
+    ".tar.gz"  : "application/x-tar",
+    ".tgz"     : "application/x-tar",
+    ".txt"     : "text/plain; charset=utf-8",  // Assumes UTF-8 files.
+    ".webp"    : "image/webp",
+    ".webm"    : "video/webm",
+    ".zip"     : "application/zip"
   };
 }
