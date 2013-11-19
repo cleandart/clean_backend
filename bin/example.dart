@@ -2,10 +2,12 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'package:clean_backend/clean_backend.dart';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
+import 'package:clean_backend/clean_backend.dart';
+import 'package:clean_router/common.dart';
 
+//TODO test example -> move them to tests
 class SimpleRequestHandler {
   Backend backend;
   SimpleRequestHandler(this.backend);
@@ -43,13 +45,16 @@ void main() {
   Backend backend = new Backend([], new SHA256());
   SimpleRequestHandler requestHandler = new SimpleRequestHandler(backend);
 
+  //The order matters here
+  backend.addRoute("resources", new Route('/resources/'));
+  backend.addRoute("add_cookie", new Route("//add-cookie/"));
+  backend.addRoute("get_cookie", new Route("/get-cookie/"));
+  backend.addRoute("static", new Route("/*"));
 
-//  backend.listen().then((_) {
-    backend.addDefaultHttpHeader('Access-Control-Allow-Origin','*');
-    backend.addView(r'/resources', requestHandler.handleHttpRequest);
-    backend.addView(r'/add-cookie', requestHandler.handleAuthenticateRequest);
-    backend.addView(r'/get-cookie', requestHandler.handleIsAuthenticatedRequest);
-    backend.addStaticView(new RegExp(r'/.*'), '.');
-//  });
-
+  //The order doesn't matter here
+  backend.addDefaultHttpHeader('Access-Control-Allow-Origin','*');
+  backend.addView('resources', requestHandler.handleHttpRequest);
+  backend.addView('add_cookie', requestHandler.handleAuthenticateRequest);
+  backend.addView('get_cookie', requestHandler.handleIsAuthenticatedRequest);
+  backend.addStaticView('static', './');
 }

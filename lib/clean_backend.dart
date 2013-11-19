@@ -20,6 +20,12 @@ class Request {
   final HttpResponse response;
   final HttpHeaders headers;
   final HttpRequest httpRequest;
+
+  /**
+   * Params returned from parsing of the path, i.e. /path/{param}/
+   */
+  final Map urlParams;
+
   final Map<String, dynamic> meta = {};
   String authenticatedUserId;
 
@@ -28,63 +34,106 @@ class Request {
       this.body,
       this.response,
       this.headers,
-      this.httpRequest
+      this.httpRequest,
+      this.urlParams
       );
 }
 
 class Backend {
-  final HttpServer server;
-  final Router router;
+  /**
+   * Register routes which are matched with request.uri .
+   */
+  final Router _router;
+
+  /**
+   * Calls handlers associated with a particular routeName.
+   */
+  final RequestNavigator _requestNavigator;
+
+  /**
+   * Handles the incoming stream of [HttpRequest]s
+   */
+  final HttpServer _server;
+
   List _defaulHttpHeaders = new List();
+
+  /**
+   * For cookies.
+   */
   final _hmacFactory;
 
-  final StreamController<Request> _onPrepareRequestController =
-      new StreamController.broadcast();
+  /**
+   * Constructor.
+   */
+  Backend.config(this._server, this._router, this._requestNavigator, this._hmacFactory);
 
-  Stream<Request> get onPrepareRequest => _onPrepareRequestController.stream;
-
-  Backend.config(this.server, this.router, this._hmacFactory);
-
-  factory Backend(key, hashMethod, {String host: "0.0.0.0", int port: 8080}) {
+  /**
+   * Creates a new backend.
+   */
+  factory Backend(List<int> key, Hash hashMethod, {String host: "0.0.0.0", int port: 8080}) {
     var server = HttpServer.bind(host, port);
-    var router = new Router(server);
-    return new Backend.config(server, router, () => new HMAC(hashMethod, key));
+    var router = new Router(host, {});
+    var requestNavigator = new RequestNavigator(server.asStream(), router);
+    return new Backend.config(server, router, requestNavigator, () => new HMAC(hashMethod, key));
   }
 
+  /**
+   * Adds header which will be attached to each response. Could be overwritten.
+   */
   void addDefaultHttpHeader(name, value) {
     _defaulHttpHeaders.add({'name': name, 'value': value});
   }
 
-  void _prepareRequestHandler(HttpRequest httpRequest, RequestHandler handler) {
+  /**
+   * C
+   */
+  void _prepareRequestHandler(HttpRequest httpRequest, Map urlParams, RequestHandler handler) {
     HttpBodyHandler.processRequest(httpRequest).then((HttpBody body) {
-      Request request = new Request(body.type, body.body, httpRequest.response, httpRequest.headers, httpRequest);
-      _onPrepareRequestController.add(request);
+      if (_defaulHttpHeaders != null) {
+        _defaulHttpHeaders.forEach((header) => httpRequest.response.headers.add(header['name'],header['value']));
+      }
+
+      Request request = new Request(body.type, body.body, httpRequest.response,
+          httpRequest.headers, httpRequest, urlParams);
+
       handler(request);
     });
   }
 
-  void addView(Pattern url, RequestHandler handler) {
-    router.serve(url).listen((HttpRequest httpRequest) {
-      if (_defaulHttpHeaders != null) {
-        _defaulHttpHeaders.forEach((header) => httpRequest.response.headers.add(header['name'],header['value']));
-      }
-      _prepareRequestHandler(httpRequest, handler);
-    });
+  /**
+   * Adds [route] for a particular [route] so handler could be attached to [routeName]s.
+   */
+  void addRoute(String routeName, Route route){
+    _router.registerRoute(routeName, route);
   }
 
-  void addStaticView(Pattern url, String path) {
-    StaticFileHandler fileHandler = new StaticFileHandler(path);
-    router.serve(url).listen((req) => fileHandler.handleRequest(req, ""));
+  /**
+   * Adds [handler] for a particular [routeName].
+   */
+  void addView(String routeName, RequestHandler handler) {
+    _requestNavigator.registerHandler(routeName, (httpRequest, urlParams)
+        => _prepareRequestHandler(httpRequest, urlParams, handler));
   }
 
+  /**
+   * Corresponding [Route] for [routeName] should be in the prefix format,
+   * i.e. "/uploads/*", as backend will look for files documentRoot/matchedSufix
+   */*/
+  void addStaticView(String routeName, String documentRoot) {
+    StaticFileHandler fileHandler = new StaticFileHandler(documentRoot);
+    _requestNavigator.registerHandler(routeName, (httpRequest, urlParams)
+        => fileHandler.handleRequest(httpRequest, urlParams["_tail"]));
+  }
+
+  /**
+   * If nothing is matched.
+   */
   void addNotFoundView(RequestHandler handler) {
-    router.defaultStream.listen((HttpRequest httpRequest) {
-      _prepareRequestHandler(httpRequest, handler);
-    });
+    _requestNavigator.registerDefaultHandler((httpRequest, urlParams)
+        => _prepareRequestHandler(httpRequest, urlParams, handler));
   }
 
   void _stringToHash(String value, HMAC hmac){
-
     Utf8Codec codec = new Utf8Codec();
     List<int> encodedUserId = codec.encode(value);
     hmac.add(encodedUserId);
@@ -113,7 +162,5 @@ class Backend {
       }
     }
     return null;
-
   }
-
 }
