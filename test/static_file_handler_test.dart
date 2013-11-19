@@ -1,3 +1,7 @@
+// Copyright (c) 2013, the Clean project authors.  Please see the AUTHORS file
+// for details. All rights reserved. Use of this source code is governed by a
+// BSD-style license that can be found in the LICENSE file.
+
 library clean_backend.static_file_handler;
 
 import 'package:unittest/unittest.dart';
@@ -59,18 +63,25 @@ void main() {
       fileHandler = new StaticFileHandler('./www');
     });
 
-    /*
-    test('bad document root', () {
+    test('allowed document root', () {
       // given & when & then
-      expect(new StaticFileHandler("./not_existing_directory/"), throwsArgumentError);
-      expect(new StaticFileHandler("simply/bad/route/"), throwsArgumentError);
-    }); */
+      new StaticFileHandler("./www");
+      new StaticFileHandler("./www/");
+      new StaticFileHandler("www");
+      new StaticFileHandler("www/");
+    });
 
-    test('request file', () {
+    test('not allowed document root', () {
+      // given & when & then
+      expect(() => new StaticFileHandler("./not_existing_directory/"), throwsArgumentError);
+      expect(() => new StaticFileHandler("simply/bad/route/"), throwsArgumentError);
+    });
+
+    //TODO consider adding last modified
+    test('request file (200)', () {
       // given
       var request = new HttpRequestMock();
       var response = request.response;
-      var lastModified =
 
       // when
       fileHandler.handleRequest(request, "testfile.txt");
@@ -79,67 +90,60 @@ void main() {
       response.when(callsTo("close")).thenCall(expectAsync0(() {
          expect(response.statusCode, equals(HttpStatus.OK));
          expect(response.content, equals("testcontent"));
-         expect(response.headers.data[HttpHeaders.CONTENT_LENGTH], equals("testcontent".length));
+         expect(response.headers.data[HttpHeaders.CONTENT_LENGTH],
+             equals("testcontent".length));
+         expect(response.headers.contentType.toString(),
+             equals("text/plain; charset=utf-8"));
       }));
     });
 
-    //TODO NOT existing root path
-    //TODO NOT existing file path
+    test('request non-existing file (404)', () {
+      // given
+      var request = new HttpRequestMock();
+      var response = request.response;
+
+      // when
+      fileHandler.handleRequest(request, "non-existing-file.txt");
+
+      // test
+      response.when(callsTo("close")).thenCall(expectAsync0(() {
+         expect(response.statusCode, equals(HttpStatus.NOT_FOUND));
+      }));
+    });
+
+    test('request directory (404)', () {
+      // given
+      var request = new HttpRequestMock();
+      var response = request.response;
+
+      // when
+      fileHandler.handleRequest(request, "www");
+
+      // test
+      response.when(callsTo("close")).thenCall(expectAsync0(() {
+         expect(response.statusCode, equals(HttpStatus.NOT_FOUND));
+      }));
+    });
+
     //TODO range
-/*
-    test('File not found (404)', () {
-      Completer<bool> completer = new Completer();
-      String finalString = "";
-
-      client.get("127.0.0.1", port, "/nonexistentfile.html").then((HttpClientRequest request) {
-        return request.close();
-
-      }).then((HttpClientResponse response) {
-        expect(response.statusCode, equals(HttpStatus.NOT_FOUND));
-        completer.complete(true);
-      });
-
-      return completer.future;
-    });
-
-    test('Serving file', () {
-      Completer<bool> completer = new Completer();
-      String finalString = "";
-
-      client.get("127.0.0.1", port, "/textfile.txt").then((HttpClientRequest request) {
-        return request.close();
-
-      }).then((HttpClientResponse response) {
-        response.transform(new Utf8Decoder())
-        .transform(new LineSplitter())
-        .listen((String result) {
-          finalString += result;
-        },
-        onDone: () {
-          expect(finalString, equals("test"));
-          completer.complete(true);
-        });
-      });
-
-      return completer.future;
-    });
 
     test('Not Modified (304)', () {
-      Completer<bool> completer = new Completer();
-      String finalString = "";
+      // given
+      var request = new HttpRequestMock();
+      request.headers.ifModifiedSince = new DateTime.now();
 
-      client.get("127.0.0.1", port, "/textfile.txt").then((HttpClientRequest request) {
-        request.headers.add("If-Modified-Since", new DateTime.now());
-        return request.close();
+      var response = request.response;
 
-      }).then((HttpClientResponse response) {
+      // when
+      fileHandler.handleRequest(request, "testfile.txt");
+
+      // test
+      response.when(callsTo("close")).thenCall(expectAsync0(() {
         expect(response.statusCode, equals(HttpStatus.NOT_MODIFIED));
-        completer.complete(true);
-      });
-
-      return completer.future;
+      }));
     });
 
+    /*
     test('Max Age', () {
       Completer<bool> completer = new Completer();
       String finalString = "";

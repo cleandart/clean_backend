@@ -3,6 +3,7 @@
 // BSD-style license that can be found in the LICENSE file.
 
 //Forked from https://github.com/DanieleSalatti/static-file-handler/blob/master/lib/static_file_handler.dart
+//TODO consider adding max range
 
 library clean_backend.static_file_handler;
 
@@ -22,7 +23,7 @@ class StaticFileHandler {
 
     var dir = new Directory(_root.root);
     if (!dir.existsSync()) {
-      throw new ArgumentError("Root path does not exist or is not a directory");
+      throw new ArgumentError("Root path '$documentRoot' does not exist or is not a directory");
     }
   }
 
@@ -153,7 +154,10 @@ class StaticFileHandler {
           break;
 
         case FileSystemEntityType.DIRECTORY:
-          throw new ArgumentError("Cannot serve directories");
+          // File not found, fall back to 404.
+          request.response.statusCode = HttpStatus.NOT_FOUND;
+          request.response.close();
+          break;
 
         default:
           // File not found, fall back to 404.
