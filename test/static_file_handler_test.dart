@@ -20,8 +20,9 @@ class HttpHeadersMock extends Mock implements HttpHeaders {
     data[key] = value;
   }
 
-  //dynamic value(String key)
-  //range := r"^bytes=(\d*)\-(\d*)$"
+  dynamic value(String key){
+    return data[key];
+  }
 }
 
 class HttpRequestMock extends Mock implements HttpRequest {
@@ -45,7 +46,7 @@ class HttpResponseMock extends Mock implements HttpResponse {
     Completer completer = new Completer();
 
     stream.transform(UTF8.decoder) // use a StringDecoder
-          .listen((String data) => content += data, // output the data
+          .listen((String s) => content += s, // output the data
             onError: (error) => print("Error, could not open file"),
             onDone: () => completer.complete()
     );
@@ -90,10 +91,12 @@ void main() {
       response.when(callsTo("close")).thenCall(expectAsync0(() {
          expect(response.statusCode, equals(HttpStatus.OK));
          expect(response.content, equals("testcontent"));
-         expect(response.headers.data[HttpHeaders.CONTENT_LENGTH],
+         expect(response.headers.value(HttpHeaders.CONTENT_LENGTH),
              equals("testcontent".length));
          expect(response.headers.contentType.toString(),
              equals("text/plain; charset=utf-8"));
+         expect(response.headers.value(HttpHeaders.ACCEPT_RANGES),
+             equals("bytes"));
       }));
     });
 
@@ -143,93 +146,26 @@ void main() {
       }));
     });
 
-    /*
-    test('Max Age', () {
-      Completer<bool> completer = new Completer();
-      String finalString = "";
-      fileHandler.maxAge = 3600;
-
-      client.get("127.0.0.1", port, "/textfile.txt").then((HttpClientRequest request) {
-        return request.close();
-      }).then((HttpClientResponse response) {
-        expect(response.headers[HttpHeaders.CACHE_CONTROL][0], equals("max-age=3600"));
-        completer.complete(true);
-      });
-
-      return completer.future;
-    });
-
     test('Range - content', () {
-      Completer<bool> completer = new Completer();
-      String finalString = "";
+      // given
+      var request = new HttpRequestMock();
+      var response = request.response;
+      request.headers.set("range", "bytes=1-7");
 
-      client.get("127.0.0.1", port, "/textfile.txt").then((HttpClientRequest request) {
-        request.headers.add("range", "bytes=1-2");
-        return request.close();
+      // when
+      fileHandler.handleRequest(request, "testfile.txt");
 
-      }).then((HttpClientResponse response) {
-        response.transform(new Utf8Decoder())
-        .transform(new LineSplitter())
-        .listen((String result) {
-          finalString += result;
-        },
-        onDone: () {
-          expect(finalString, equals("es"));
-          completer.complete(true);
-        });
-      });
-
-      return completer.future;
-    });
-
-    test('Range - content length header', () {
-      Completer<bool> completer = new Completer();
-      String finalString = "";
-
-      client.get("127.0.0.1", port, "/textfile.txt").then((HttpClientRequest request) {
-        request.headers.add("range", "bytes=1-2");
-        return request.close();
-
-      }).then((HttpClientResponse response) {
-        expect(response.headers[HttpHeaders.CONTENT_LENGTH], equals(['2']));
-        completer.complete(true);
-      });
-
-      return completer.future;
-    });
-
-    test('Range - partial content status', () {
-      Completer<bool> completer = new Completer();
-      String finalString = "";
-
-      client.get("127.0.0.1", port, "/textfile.txt").then((HttpClientRequest request) {
-        request.headers.add("range", "bytes=1-2");
-        return request.close();
-
-      }).then((HttpClientResponse response) {
+      // test
+      response.when(callsTo("close")).thenCall(expectAsync0(() {
         expect(response.statusCode, equals(HttpStatus.PARTIAL_CONTENT));
-        completer.complete(true);
-      });
-
-      return completer.future;
+        expect(response.content, equals("estcont"));
+        expect(response.headers.value(HttpHeaders.CONTENT_LENGTH), equals(7));
+        expect(response.headers.contentType.toString(),
+            equals("text/plain; charset=utf-8"));
+        expect(response.headers.value(HttpHeaders.CONTENT_RANGE),
+            equals('bytes 1-7/11'));
+      }));
     });
 
-    test('Range - content range header', () {
-      Completer<bool> completer = new Completer();
-      String finalString = "";
-
-      client.get("127.0.0.1", port, "/textfile.txt").then((HttpClientRequest request) {
-        request.headers.add("range", "bytes=1-2");
-        return request.close();
-
-      }).then((HttpClientResponse response) {
-        expect(response.headers[HttpHeaders.CONTENT_RANGE], equals(['bytes 1-2/4']));
-        completer.complete(true);
-      });
-
-      return completer.future;
-    });
-*/
   });
-
 }
