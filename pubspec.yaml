@@ -1,6 +1,14 @@
 name: clean_backend
-description: A sample command-line application
+version: 0.0.0
+authors:
+- Igor Liska <liska.igor4@gmail.com>
+- Peter Csiba <petherz@gmail.com>
+- Eduard Eiben <eduard.eiben@gmail.com>
+description: Serving client HttpRequests
+homepage: https://github.com/cleandart/clean_backend
 dependencies:
   http_server: any
-  route: any
+  clean_router:
+    git: https://github.com/cleandart/clean_router
+dev_dependencies:
   unittest: any
