@@ -107,6 +107,9 @@ class Backend {
 
     for (String cookieString in headers[HttpHeaders.COOKIE]) {
       Cookie cookie = new Cookie.fromSetCookieValue(cookieString);
+      cookie.maxAge = 365 * 24 * 60 * 60;
+      cookie.path = '/';
+      cookie.httpOnly = true;
       if (cookie.name == 'authentication') {
         HMAC hmac = _hmacFactory();
         Map authentication = JSON.decode(cookie.value);
