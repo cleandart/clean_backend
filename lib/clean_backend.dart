@@ -99,6 +99,9 @@ class Backend {
     _stringToHash(userId, hmac);
     List<int> userIdSignature = hmac.close();
     Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': userIdSignature}));
+    cookie.maxAge = 365 * 24 * 60 * 60;
+    cookie.path = '/';
+    cookie.httpOnly = true;
     response.headers.add(HttpHeaders.SET_COOKIE, cookie);
   }
 
@@ -107,9 +110,6 @@ class Backend {
 
     for (String cookieString in headers[HttpHeaders.COOKIE]) {
       Cookie cookie = new Cookie.fromSetCookieValue(cookieString);
-      cookie.maxAge = 365 * 24 * 60 * 60;
-      cookie.path = '/';
-      cookie.httpOnly = true;
       if (cookie.name == 'authentication') {
         HMAC hmac = _hmacFactory();
         Map authentication = JSON.decode(cookie.value);
