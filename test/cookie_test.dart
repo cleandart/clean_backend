@@ -4,8 +4,9 @@
 
 import 'dart:io';
 import 'dart:convert';
-import 'package:unittest/unittest.dart';
+import 'package:http_server/http_server.dart';
 import 'package:crypto/crypto.dart';
+import 'package:unittest/unittest.dart';
 import 'package:unittest/mock.dart';
 import 'package:clean_backend/clean_backend.dart';
 import 'package:clean_router/server.dart';
@@ -52,7 +53,7 @@ void main() {
       MockHttpServer server = new MockHttpServer();
       MockRouter router = new MockRouter();
       var requestNavigator = new MockRequestNavigator();
-      backend = new Backend.config(server, router, requestNavigator, hmacFactory);
+      backend = new Backend.config(server, router, requestNavigator, hmacFactory, HttpBodyHandler.processRequest);
     });
 
     test('Authenticate test (T01).', () {
