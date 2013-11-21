@@ -43,7 +43,7 @@ class MockRequest extends Mock implements Request {
 }
 
 void main() {
-  group('Backend', () {
+  group('(Cookie)', () {
     Backend backend;
     List<int> signature;
     setUp(() {
