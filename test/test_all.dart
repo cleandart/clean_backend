@@ -6,8 +6,10 @@ library test_all;
 
 import "cookie_test.dart" as cookie_test;
 import "static_file_handler_test.dart" as static_file_handler_test;
+import "backend_test.dart" as backend_test;
 
 void main() {
   cookie_test.main();
   static_file_handler_test.main();
+  backend_test.main();
 }

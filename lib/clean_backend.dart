@@ -79,9 +79,15 @@ class Backend {
   final _hmacFactory;
 
   /**
+   * HttpBodyHandler.processRequest
+   */
+  final _httpBodyExtractor;
+
+  /**
    * Constructor.
    */
-  Backend.config(this._server, this._router, this._requestNavigator, this._hmacFactory);
+  Backend.config(this._server, this._router, this._requestNavigator,
+      this._hmacFactory, this._httpBodyExtractor);
 
   /**
    * Creates a new backend.
@@ -91,7 +97,7 @@ class Backend {
       var router = new Router(host, {});
       var requestNavigator = new RequestNavigator(httpServer.asBroadcastStream(), router);
       return new Backend.config(httpServer, router, requestNavigator,
-          () => new HMAC(hashMethod, key));
+          () => new HMAC(hashMethod, key), HttpBodyHandler.processRequest);
     });
   }
 
@@ -106,10 +112,11 @@ class Backend {
    * Transforms [httpRequest] with [urlParams] and creates [Request] which is passed
    * asynchronously to [handler].
    */
-  void _prepareRequestHandler(HttpRequest httpRequest, Map urlParams, RequestHandler handler) {
-    HttpBodyHandler.processRequest(httpRequest).then((HttpBody body) {
+  void prepareRequestHandler(HttpRequest httpRequest, Map urlParams, RequestHandler handler) {
+    _httpBodyExtractor(httpRequest).then((HttpBody body) {
       if (_defaulHttpHeaders != null) {
-        _defaulHttpHeaders.forEach((header) => httpRequest.response.headers.add(header['name'],header['value']));
+        _defaulHttpHeaders.forEach((header) => httpRequest.response.headers.add(
+            header['name'],header['value']));
       }
 
       Request request = new Request(body.type, body.body, httpRequest.response,
@@ -131,7 +138,7 @@ class Backend {
    */
   void addView(String routeName, RequestHandler handler) {
     _requestNavigator.registerHandler(routeName, (httpRequest, urlParams)
-        => _prepareRequestHandler(httpRequest, urlParams, handler));
+        => prepareRequestHandler(httpRequest, urlParams, handler));
   }
 
   /**
@@ -149,7 +156,7 @@ class Backend {
    */
   void addNotFoundView(RequestHandler handler) {
     _requestNavigator.registerDefaultHandler((httpRequest, urlParams)
-        => _prepareRequestHandler(httpRequest, urlParams, handler));
+        => prepareRequestHandler(httpRequest, urlParams, handler));
   }
 
   void _stringToHash(String value, HMAC hmac) {
