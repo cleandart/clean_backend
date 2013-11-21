@@ -60,6 +60,7 @@ class Backend {
   void _prepareRequestHandler(HttpRequest httpRequest, RequestHandler handler) {
     HttpBodyHandler.processRequest(httpRequest).then((HttpBody body) {
       Request request = new Request(body.type, body.body, httpRequest.response, httpRequest.headers, httpRequest);
+      request.authenticatedUserId = getAuthenticatedUser(request.headers);
       _onPrepareRequestController.add(request);
       handler(request);
     });
