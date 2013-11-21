@@ -58,7 +58,7 @@ void main() {
 
     //The order matters here
     backend.addRoute("resources", new Route('/resources/'));
-    backend.addRoute("add_cookie", new Route("//add-cookie/"));
+    backend.addRoute("add_cookie", new Route("/add-cookie/"));
     backend.addRoute("get_cookie", new Route("/get-cookie/"));
     backend.addRoute("static", new Route("/*"));
 
@@ -70,3 +70,13 @@ void main() {
     backend.addStaticView('static', './');
   });
 }
+
+
+
+
+
+
+
+
+
+

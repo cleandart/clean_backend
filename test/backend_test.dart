@@ -27,21 +27,22 @@ class MockHMAC extends Mock implements HMAC{
     when(callsTo('close')).alwaysReturn(signature);
   }
 }
+
 class MockHttpHeaders extends Mock implements HttpHeaders {}
 class MockHttpServer extends Mock implements HttpServer {}
 class MockRouter extends Mock implements Router {}
 class MockRequestNavigator extends Mock implements RequestNavigator {}
+
 class MockHttpResponse extends Mock implements HttpResponse{
   var headers = new MockHttpHeaders();
 }
+
 class MockRequest extends Mock implements Request {
   var headers = new MockHttpHeaders();
   var response = new MockHttpResponse();
 }
 
-//TODO rewrite tests
 void main() {
-
   group('Backend', () {
     Backend backend;
     List<int> signature;
@@ -111,7 +112,7 @@ void main() {
 
     });
 
-    test('delete authentication cookie (T05).', (){
+    test('delete authentication cookie (T05).', () {
       //given
       String userId = 'john.doe25';
       MockRequest request = new MockRequest();

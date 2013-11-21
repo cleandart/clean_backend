@@ -56,7 +56,7 @@ class HttpResponseMock extends Mock implements HttpResponse {
 }
 
 void main() {
-  group('StaticFileHandler', () {
+  group('(StaticFileHandler)', () {
 
     StaticFileHandler fileHandler;
 
@@ -130,7 +130,7 @@ void main() {
 
     //TODO range
 
-    test('Not Modified (304)', () {
+    test('not Modified (304)', () {
       // given
       var request = new HttpRequestMock();
       request.headers.ifModifiedSince = new DateTime.now();
@@ -146,7 +146,7 @@ void main() {
       }));
     });
 
-    test('Range - content', () {
+    test('range - content', () {
       // given
       var request = new HttpRequestMock();
       var response = request.response;
