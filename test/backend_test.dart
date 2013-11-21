@@ -67,7 +67,7 @@ void main() {
       //then
       var cookie = response.headers.getLogs(callsTo('add', HttpHeaders.SET_COOKIE)).last.args[1];
       String expectedCookieValue = JSON.encode({'userID': userId, 'signature': signature});
-      expect(cookie.toString(), equals('authentication=$expectedCookieValue'));
+      expect(cookie.toString(), equals('authentication=$expectedCookieValue; Max-Age=31536000; Path=/; HttpOnly'));
     });
 
     test('get userId from cookies test (T02).', () {
