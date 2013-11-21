@@ -30,8 +30,13 @@ class MockHMAC extends Mock implements HMAC{
 class MockHttpHeaders extends Mock implements HttpHeaders {}
 class MockHttpServer extends Mock implements HttpServer {}
 class MockRouter extends Mock implements Router {}
+class MockRequestNavigator extends Mock implements RequestNavigator {}
 class MockHttpResponse extends Mock implements HttpResponse{
   var headers = new MockHttpHeaders();
+}
+class MockRequest extends Mock implements Request {
+  var headers = new MockHttpHeaders();
+  var response = new MockHttpResponse();
 }
 
 //TODO rewrite tests
@@ -42,16 +47,15 @@ void main() {
     List<int> signature;
     setUp(() {
       signature = [0,0,0,0,0,0];
-      var _hmacFactory = () => new MockHMAC(signature);
+      var hmacFactory = () => new MockHMAC(signature);
       MockHttpServer server = new MockHttpServer();
-      MockRouter router;
-      backend = new Backend.config(server, router, _hmacFactory);
+      MockRouter router = new MockRouter();
+      var requestNavigator = new MockRequestNavigator();
+      backend = new Backend.config(server, router, requestNavigator, hmacFactory);
     });
 
     test('Authenticate test (T01).', () {
       //given
-
-
       MockHttpResponse response = new MockHttpResponse();
       String userId = 'john.doe25';
 
@@ -60,8 +64,9 @@ void main() {
 
       //then
       var cookie = response.headers.getLogs(callsTo('add', HttpHeaders.SET_COOKIE)).last.args[1];
-      String expectedCookieValue = JSON.encode({'userID': userId, 'signature': signature});
-      expect(cookie.toString(), equals('authentication=$expectedCookieValue'));
+      expect(cookie.toString(), equals('authentication=${JSON.encode({
+        'userID': userId, 'signature': signature})}; Max-Age=${
+          Backend.COOKIE_MAX_AGE}; Path=${Backend.COOKIE_PATH}; HttpOnly'));
     });
 
     test('get userId from cookies test (T02).', () {
@@ -76,8 +81,6 @@ void main() {
 
       //then
       expect(getUserId, equals(userId));
-
-
     });
 
     test('get userId from cookies test - not existing user (T03).', () {
@@ -90,9 +93,7 @@ void main() {
       String getUserId = backend.getAuthenticatedUser(headers);
 
       //then
-
       expect(getUserId, isNull);
-
     });
 
     test('get userId from cookies test - bad authentication code (T04).', () {
@@ -101,14 +102,30 @@ void main() {
       Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': [0,1,0,0,0,0]}));
       MockHttpHeaders headers = new MockHttpHeaders();
       headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn([cookie.toString()]);
+
       //when
       String getUserId = backend.getAuthenticatedUser(headers);
 
       //then
-
       expect(getUserId, isNull);
 
     });
 
+    test('delete authentication cookie (T05).', (){
+      //given
+      String userId = 'john.doe25';
+      MockRequest request = new MockRequest();
+      Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': signature}));
+      request.headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn([cookie.toString()]);
+
+      //when
+      backend.logout(request);
+      cookie.maxAge = 0;
+
+      //then
+      List addedHeader = request.response.headers.getLogs(callsTo('add')).last.args;
+      expect(addedHeader[0], equals(HttpHeaders.SET_COOKIE));
+      expect(addedHeader[1].toString(), equals(cookie.toString()));
+    });
   });
  }

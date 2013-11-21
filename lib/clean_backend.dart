@@ -40,6 +40,10 @@ class Request {
 }
 
 class Backend {
+  static final int COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
+  static final String COOKIE_PATH = "/";
+  static final bool COOKIE_HTTP_ONLY = true;
+
   /**
    * Register routes which are matched with request.uri .
    */
@@ -70,11 +74,12 @@ class Backend {
   /**
    * Creates a new backend.
    */
-  factory Backend(List<int> key, Hash hashMethod, {String host: "0.0.0.0", int port: 8080}) {
-    var server = HttpServer.bind(host, port);
-    var router = new Router(host, {});
-    var requestNavigator = new RequestNavigator(server.asStream(), router);
-    return new Backend.config(server, router, requestNavigator, () => new HMAC(hashMethod, key));
+  static Future<Backend> bind(key, hashMethod, {String host: "0.0.0.0", int port: 8080}){
+    return HttpServer.bind(host, port).then((httpServer) {
+      var router = new Router(host, {});
+      //TODO why broadcast?
+      var requestNavigator = new RequestNavigator(httpServer.asBroadcastStream(), router);
+      return new Backend.config(httpServer, router, requestNavigator, () => new HMAC(hashMethod, key));});
   }
 
   /**
@@ -144,6 +149,9 @@ class Backend {
     _stringToHash(userId, hmac);
     List<int> userIdSignature = hmac.close();
     Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': userIdSignature}));
+    cookie.maxAge = COOKIE_MAX_AGE;
+    cookie.path = COOKIE_PATH;
+    cookie.httpOnly = COOKIE_HTTP_ONLY;
     response.headers.add(HttpHeaders.SET_COOKIE, cookie);
   }
 
@@ -162,5 +170,17 @@ class Backend {
       }
     }
     return null;
+  }
+
+  void logout(Request request){
+    if (request.headers[HttpHeaders.COOKIE] == null) return;
+    for (String cookieString in request.headers[HttpHeaders.COOKIE]) {
+
+      Cookie cookie = new Cookie.fromSetCookieValue(cookieString);
+      if (cookie.name == 'authentication') {
+        cookie.maxAge = 0;
+        request.response.headers.add(HttpHeaders.SET_COOKIE, cookie);
+      }
+    }
   }
 }

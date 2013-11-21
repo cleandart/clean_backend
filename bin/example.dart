@@ -39,22 +39,34 @@ class SimpleRequestHandler {
       ..write('<body>Response to authenticate request. authenticated: $userId, $cookies, $cookies2</body>')
       ..close();
   }
+
+  void handleLogoutRequest(Request request) {
+    print('incoming IsAuthenticatedRequest:$request');
+    backend.logout(request);
+    var cookies = request.headers[HttpHeaders.SET_COOKIE];
+    var cookies2 = request.headers[HttpHeaders.COOKIE];
+    request.response
+      ..headers.contentType = ContentType.parse("text/html")
+      ..write('<body>Response to logout request. cookies: $cookies, $cookies2 </body>')
+      ..close();
+  }
 }
 
 void main() {
-  Backend backend = new Backend([], new SHA256());
-  SimpleRequestHandler requestHandler = new SimpleRequestHandler(backend);
+  Backend.bind([], new SHA256()).then((backend) {
+    SimpleRequestHandler requestHandler = new SimpleRequestHandler(backend);
 
-  //The order matters here
-  backend.addRoute("resources", new Route('/resources/'));
-  backend.addRoute("add_cookie", new Route("//add-cookie/"));
-  backend.addRoute("get_cookie", new Route("/get-cookie/"));
-  backend.addRoute("static", new Route("/*"));
+    //The order matters here
+    backend.addRoute("resources", new Route('/resources/'));
+    backend.addRoute("add_cookie", new Route("//add-cookie/"));
+    backend.addRoute("get_cookie", new Route("/get-cookie/"));
+    backend.addRoute("static", new Route("/*"));
 
-  //The order doesn't matter here
-  backend.addDefaultHttpHeader('Access-Control-Allow-Origin','*');
-  backend.addView('resources', requestHandler.handleHttpRequest);
-  backend.addView('add_cookie', requestHandler.handleAuthenticateRequest);
-  backend.addView('get_cookie', requestHandler.handleIsAuthenticatedRequest);
-  backend.addStaticView('static', './');
+    //The order doesn't matter here
+    backend.addDefaultHttpHeader('Access-Control-Allow-Origin','*');
+    backend.addView('resources', requestHandler.handleHttpRequest);
+    backend.addView('add_cookie', requestHandler.handleAuthenticateRequest);
+    backend.addView('get_cookie', requestHandler.handleIsAuthenticatedRequest);
+    backend.addStaticView('static', './');
+  });
 }
