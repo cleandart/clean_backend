@@ -50,6 +50,15 @@ class SimpleRequestHandler {
       ..write('<body>Response to logout request. cookies: $cookies, $cookies2 </body>')
       ..close();
   }
+
+  void handleDefault(Request request) {
+    print('incoming default:$request');
+
+    request.response
+      ..headers.contentType = ContentType.parse("text/html")
+      ..write('<body>This is garbage. You should look for something clean.</body>')
+      ..close();
+  }
 }
 
 void main() {
@@ -60,14 +69,16 @@ void main() {
     backend.addRoute("resources", new Route('/resources/'));
     backend.addRoute("add_cookie", new Route("/add-cookie/"));
     backend.addRoute("get_cookie", new Route("/get-cookie/"));
-    backend.addRoute("static", new Route("/*"));
+    backend.addRoute("static", new Route("/uploads/*"));
 
+    //Note: browser also calls for /favicon.ico
     //The order doesn't matter here
     backend.addDefaultHttpHeader('Access-Control-Allow-Origin','*');
     backend.addView('resources', requestHandler.handleHttpRequest);
     backend.addView('add_cookie', requestHandler.handleAuthenticateRequest);
     backend.addView('get_cookie', requestHandler.handleIsAuthenticatedRequest);
     backend.addStaticView('static', './');
+    backend.addNotFoundView(requestHandler.handleDefault);
   });
 }
 

@@ -37,6 +37,18 @@ class Request {
       this.httpRequest,
       this.urlParams
   );
+
+  String toString(){
+    return JSON.encode({
+      'url' : httpRequest.uri.path,
+      'type' : type.toString(),
+      'body' : body.toString(),
+      'response' : response.toString(),
+      'headers' : headers.toString(),
+      'httpRequest' : httpRequest.toString(),
+      'urlParams' : urlParams.toString(),
+    });
+  }
 }
 
 class Backend {
