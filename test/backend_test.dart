@@ -78,6 +78,7 @@ void main() {
 
       // then
       router.getLogs(callsTo('registerRoute')).verify(happenedOnce);
+
     });
 
     test('addView', () {

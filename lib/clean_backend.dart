@@ -114,6 +114,7 @@ class Backend {
    */
   void prepareRequestHandler(HttpRequest httpRequest, Map urlParams, RequestHandler handler) {
     _httpBodyExtractor(httpRequest).then((HttpBody body) {
+
       if (_defaulHttpHeaders != null) {
         _defaulHttpHeaders.forEach((header) => httpRequest.response.headers.add(
             header['name'],header['value']));
@@ -121,6 +122,7 @@ class Backend {
 
       Request request = new Request(body.type, body.body, httpRequest.response,
           httpRequest.headers, httpRequest, urlParams);
+      request.authenticatedUserId = getAuthenticatedUser(request.headers);
 
       handler(request);
     });
