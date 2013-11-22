@@ -2,137 +2,142 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'package:unittest/unittest.dart';
-
-import 'package:clean_backend/clean_backend.dart';
-import 'package:crypto/crypto.dart';
-import 'package:unittest/mock.dart';
 import 'dart:io';
+import 'dart:async';
 import 'dart:convert';
-import 'package:route/server.dart';
+import 'package:http_server/http_server.dart';
+import 'package:crypto/crypto.dart';
+import 'package:unittest/unittest.dart';
+import 'package:unittest/mock.dart';
+import 'package:clean_backend/clean_backend.dart';
+import 'package:clean_router/server.dart';
 
-
-
-Utf8Codec codec = new Utf8Codec();
-
-class MockHMAC extends Mock implements HMAC{
-  List<int> signature;
-  bool verify(List<int> digest){
-    if (digest.length != signature.length) return false;
-    for (int i = 0; i< digest.length; i++){
-      if (digest[i] != signature[i])
-        return false;
-    }
-    return true;
-  }
-  MockHMAC(signature){
-    this.signature = signature;
-    when(callsTo('close')).alwaysReturn(signature);
-  }
-}
-class MockHttpHeaders extends Mock implements HttpHeaders {}
 class MockHttpServer extends Mock implements HttpServer {}
 class MockRouter extends Mock implements Router {}
-class MockHttpResponse extends Mock implements HttpResponse{
-  var headers = new MockHttpHeaders();
+class MockRequestNavigator extends Mock implements RequestNavigator {}
+class MockHMAC extends Mock implements HMAC {}
+class HttpBodyMock extends Mock implements HttpBody {}
+
+class HttpResponseMock extends Mock implements HttpResponse{
+  HttpHeaders headers = new HttpHeadersMock();
 }
-class MockRequest extends Mock implements Request {
-  var headers = new MockHttpHeaders();
-  var response = new MockHttpResponse();
+
+class HttpHeadersMock extends Mock implements HttpHeaders {
+  Map data = {};
+
+  String add(String key, dynamic value){
+    data[key] = value;
+  }
+
+  dynamic value(String key){
+    return data[key];
+  }
+}
+
+class HttpBodyHandlerMock extends Mock implements HttpBodyHandler {
+  Future<HttpRequestBody> processRequest(
+      HttpRequest request,
+      {Encoding defaultEncoding}){
+      Completer completer = new Completer();
+      new Timer(new Duration(milliseconds:1), () => completer.complete(new HttpBodyMock()));
+      return completer.future;
+  }
+}
+class HttpRequestMock extends Mock implements HttpRequest {
+  Uri uri;
+  HttpHeaders headers = new HttpHeadersMock();
+  HttpResponse response = new HttpResponseMock();
+
+  HttpRequestMock(this.uri);
 }
 
 void main() {
-
-  group('Backend', () {
+  group('(Backend)', () {
     Backend backend;
-    List<int> signature;
+    MockHttpServer server;
+    MockRequestNavigator requestNavigator;
+    MockRouter router;
+    MockHMAC hmac;
+    HttpBodyHandlerMock httpBodyHandler;
+
     setUp(() {
-      signature = [0,0,0,0,0,0];
-      var _hmacFactory = () => new MockHMAC(signature);
-      MockHttpServer server = new MockHttpServer();
-      MockRouter router;
-      backend = new Backend.config(server, router, _hmacFactory);
+      server = new MockHttpServer();
+      router = new MockRouter();
+      requestNavigator = new MockRequestNavigator();
+      hmac = new MockHMAC();
+      httpBodyHandler = new HttpBodyHandlerMock();
+
+      backend = new Backend.config(server, router, requestNavigator, hmac, httpBodyHandler.processRequest);
     });
 
-    test('Authenticate test (T01).', () {
-      //given
+    test('addRoute', () {
+      // given
 
+      // when
+      backend.addRoute('name', new Route('/'));
 
-      MockHttpResponse response = new MockHttpResponse();
-      String userId = 'john.doe25';
-
-      //when
-      backend.authenticate(response, userId);
-
-      //then
-      var cookie = response.headers.getLogs(callsTo('add', HttpHeaders.SET_COOKIE)).last.args[1];
-      String expectedCookieValue = JSON.encode({'userID': userId, 'signature': signature});
-      expect(cookie.toString(), equals('authentication=$expectedCookieValue; Max-Age=31536000; Path=/; HttpOnly'));
-    });
-
-    test('get userId from cookies test (T02).', () {
-      //given
-      String userId = 'john.doe25';
-      Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': signature}));
-      MockHttpHeaders headers = new MockHttpHeaders();
-      headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn([cookie.toString()]);
-
-      //when
-      String getUserId = backend.getAuthenticatedUser(headers);
-
-      //then
-      expect(getUserId, equals(userId));
-
+      // then
+      router.getLogs(callsTo('registerRoute')).verify(happenedOnce);
 
     });
 
-    test('get userId from cookies test - not existing user (T03).', () {
-      //given
-      String userId = 'john.doe25';
-      MockHttpHeaders headers = new MockHttpHeaders();
-      headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn(null);
+    test('addView', () {
+      // given
 
-      //when
-      String getUserId = backend.getAuthenticatedUser(headers);
+      // when
+      backend.addView('name', (_) {});
 
-      //then
-
-      expect(getUserId, isNull);
-
+      // then
+      requestNavigator.getLogs(callsTo('registerHandler')).verify(happenedOnce);
     });
 
-    test('get userId from cookies test - bad authentication code (T04).', () {
-      //given
-      String userId = 'john.doe25';
-      Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': [0,1,0,0,0,0]}));
-      MockHttpHeaders headers = new MockHttpHeaders();
-      headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn([cookie.toString()]);
+    test('prepareRequestHandler', () {
+      // given
+      HttpRequest req;
+      var request = new HttpRequestMock(Uri.parse('/static/'));
 
-      //when
-      String getUserId = backend.getAuthenticatedUser(headers);
-
-      //then
-      expect(getUserId, isNull);
-
+      // when & then
+      backend.prepareRequestHandler(request, {'key':'value'}, expectAsync1((Request request) {
+        expect(request.match, equals({'key':'value'}));
+        expect(request.httpRequest.uri.path, equals('/static/'));
+        expect(request.body, isNull);
+        expect(request.headers, new isInstanceOf<HttpHeaders>());
+        expect(request.type, isNull);
+      }));
     });
 
-    test('delete authentication cookie (T05).', (){
-      //given
-      String userId = 'john.doe25';
-      MockRequest request = new MockRequest();
-      Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': signature}));
-      request.headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn([cookie.toString()]);
+    test('addDefaultHttpHeader', () {
+      // given
+      var request = new HttpRequestMock(Uri.parse('/static/'));
 
-      //when
-      backend.logout(request);
-      cookie.maxAge = 0;
+      // when
+      backend.addDefaultHttpHeader("header_name", "header_value");
 
-      //then
-      List addedHeader = request.response.headers.getLogs(callsTo('add')).last.args;
-      expect(addedHeader[0], equals(HttpHeaders.SET_COOKIE));
-      expect(addedHeader[1].toString(), equals(cookie.toString()));
+      // then
+      backend.prepareRequestHandler(request, {}, expectAsync1((Request request) {
+        expect(request.response.headers.value("header_name"), equals("header_value"));
+      }));
     });
 
+    test('addStaticView', () {
+      // given
 
+      // when
+      backend.addStaticView('name', "/root/");
+
+      // then
+      requestNavigator.getLogs(callsTo('registerHandler')).verify(happenedOnce);
+    });
+
+    test('addNotFoundView', () {
+      // given
+
+      // when
+      backend.addNotFoundView((_) {});
+
+      // then
+      requestNavigator.getLogs(callsTo('registerDefaultHandler')).verify(happenedOnce);
+    });
   });
- }
+}
+

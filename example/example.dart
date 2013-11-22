@@ -2,10 +2,12 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'package:clean_backend/clean_backend.dart';
 import 'dart:io';
 import 'package:crypto/crypto.dart';
+import 'package:clean_backend/clean_backend.dart';
+import 'package:clean_router/common.dart';
 
+//TODO test example -> move them to tests
 class SimpleRequestHandler {
   Backend backend;
   SimpleRequestHandler(this.backend);
@@ -48,17 +50,44 @@ class SimpleRequestHandler {
       ..write('<body>Response to logout request. cookies: $cookies, $cookies2 </body>')
       ..close();
   }
+
+  void handleDefault(Request request) {
+    print('incoming default:$request');
+
+    request.response
+      ..headers.contentType = ContentType.parse("text/html")
+      ..write('<body>This is garbage. You should look for something clean.</body>')
+      ..close();
+  }
 }
 
 void main() {
   Backend.bind([], new SHA256()).then((backend) {
     SimpleRequestHandler requestHandler = new SimpleRequestHandler(backend);
-    backend.addDefaultHttpHeader('Access-Control-Allow-Origin','*');
-    backend.addView(r'/resources', requestHandler.handleHttpRequest);
-    backend.addView(r'/add-cookie', requestHandler.handleAuthenticateRequest);
-    backend.addView(r'/get-cookie', requestHandler.handleIsAuthenticatedRequest);
-    backend.addView(r'/logout', requestHandler.handleLogoutRequest);
-    backend.addStaticView(new RegExp(r'/.*'), '.');
-  });
 
+    //The order matters here
+    backend.addRoute("resources", new Route('/resources/'));
+    backend.addRoute("add_cookie", new Route("/add-cookie/"));
+    backend.addRoute("get_cookie", new Route("/get-cookie/"));
+    backend.addRoute("static", new Route("/*"));
+
+    //Note: browser also calls for /favicon.ico
+    //The order doesn't matter here
+    backend.addDefaultHttpHeader('Access-Control-Allow-Origin','*');
+    backend.addView('resources', requestHandler.handleHttpRequest);
+    backend.addView('add_cookie', requestHandler.handleAuthenticateRequest);
+    backend.addView('get_cookie', requestHandler.handleIsAuthenticatedRequest);
+    backend.addStaticView('static', '../test/www/');
+    backend.addNotFoundView(requestHandler.handleDefault);
+  });
 }
+
+
+
+
+
+
+
+
+
+

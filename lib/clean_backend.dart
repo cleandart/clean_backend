@@ -7,10 +7,10 @@ library clean_backend;
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
-import 'package:route/server.dart';
-import 'package:static_file_handler/static_file_handler.dart';
-import 'package:http_server/http_server.dart';
 import 'package:crypto/crypto.dart';
+import 'package:http_server/http_server.dart';
+import 'package:clean_backend/static_file_handler.dart';
+import 'package:clean_router/server.dart';
 
 typedef void RequestHandler(Request request);
 
@@ -20,6 +20,12 @@ class Request {
   final HttpResponse response;
   final HttpHeaders headers;
   final HttpRequest httpRequest;
+
+  /**
+   * Params returned from parsing of the path, i.e. /path/{param}/
+   */
+  final Map match;
+
   final Map<String, dynamic> meta = {};
   String authenticatedUserId;
 
@@ -28,86 +34,155 @@ class Request {
       this.body,
       this.response,
       this.headers,
-      this.httpRequest
-      );
+      this.httpRequest,
+      this.match
+  );
 
+  String toString(){
+    return JSON.encode({
+      'url' : httpRequest.uri.path,
+      'type' : type.toString(),
+      'body' : body.toString(),
+      'response' : response.toString(),
+      'headers' : headers.toString(),
+      'httpRequest' : httpRequest.toString(),
+      'match' : match.toString(),
+    });
+  }
 }
 
 class Backend {
-  final HttpServer server;
-  final Router router;
+  static final int COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
+  static final String COOKIE_PATH = "/";
+  static final bool COOKIE_HTTP_ONLY = true;
+
+  /**
+   * Register routes which are matched with request.uri .
+   */
+  final Router _router;
+
+  /**
+   * Calls handlers associated with a particular routeName.
+   */
+  final RequestNavigator _requestNavigator;
+
+  /**
+   * Handles the incoming stream of [HttpRequest]s
+   */
+  final HttpServer _server;
+
   List _defaulHttpHeaders = new List();
+
+  /**
+   * For cookies.
+   */
   final _hmacFactory;
 
-  final StreamController<Request> _onPrepareRequestController =
-      new StreamController.broadcast();
+  /**
+   * HttpBodyHandler.processRequest
+   */
+  final _httpBodyExtractor;
 
-  Stream<Request> get onPrepareRequest => _onPrepareRequestController.stream;
+  /**
+   * Constructor.
+   */
+  Backend.config(this._server, this._router, this._requestNavigator,
+      this._hmacFactory, this._httpBodyExtractor);
 
-  Backend.config(this.server, this.router, this._hmacFactory);
-
-
+  /**
+   * Creates a new backend.
+   */
   static Future<Backend> bind(key, hashMethod, {String host: "0.0.0.0", int port: 8080}){
     return HttpServer.bind(host, port).then((httpServer) {
-      var router = new Router(httpServer);
-      return new Backend.config(httpServer, router, () => new HMAC(hashMethod, key));});
+      var router = new Router(host, {});
+      var requestNavigator = new RequestNavigator(httpServer.asBroadcastStream(), router);
+      return new Backend.config(httpServer, router, requestNavigator,
+          () => new HMAC(hashMethod, key), HttpBodyHandler.processRequest);
+    });
   }
 
+  /**
+   * Adds header which will be attached to each response. Could be overwritten.
+   */
   void addDefaultHttpHeader(name, value) {
     _defaulHttpHeaders.add({'name': name, 'value': value});
   }
 
-  void _prepareRequestHandler(HttpRequest httpRequest, RequestHandler handler) {
-    HttpBodyHandler.processRequest(httpRequest).then((HttpBody body) {
-      Request request = new Request(body.type, body.body, httpRequest.response, httpRequest.headers, httpRequest);
+  /**
+   * Transforms [httpRequest] with [urlParams] and creates [Request] which is passed
+   * asynchronously to [handler].
+   */
+  void prepareRequestHandler(HttpRequest httpRequest, Map urlParams, RequestHandler handler) {
+    _httpBodyExtractor(httpRequest).then((HttpBody body) {
+
+      if (_defaulHttpHeaders != null) {
+        _defaulHttpHeaders.forEach((header) => httpRequest.response.headers.add(
+            header['name'],header['value']));
+      }
+
+      Request request = new Request(body.type, body.body, httpRequest.response,
+          httpRequest.headers, httpRequest, urlParams);
       request.authenticatedUserId = getAuthenticatedUser(request.headers);
-      _onPrepareRequestController.add(request);
+
       handler(request);
     });
   }
 
-  void addView(Pattern url,RequestHandler handler) {
-    router.serve(url).listen((HttpRequest httpRequest) {
-      if (_defaulHttpHeaders != null) {
-        _defaulHttpHeaders.forEach((header) => httpRequest.response.headers.add(header['name'],header['value']));
-      }
-      _prepareRequestHandler(httpRequest, handler);
-    });
+  /**
+   * Adds [route] for a particular [route] so handler could be attached to [routeName]s.
+   */
+  void addRoute(String routeName, Route route){
+    _router.registerRoute(routeName, route);
   }
 
-
-
-  void addStaticView(Pattern url, String path) {
-    StaticFileHandler fileHandler = new StaticFileHandler.serveFolder(path);
-    router.serve(url).listen(fileHandler.handleRequest);
+  /**
+   * Adds [handler] for a particular [routeName].
+   */
+  void addView(String routeName, RequestHandler handler) {
+    _requestNavigator.registerHandler(routeName, (httpRequest, urlParams)
+        => prepareRequestHandler(httpRequest, urlParams, handler));
   }
 
+  /**
+   * Corresponding [Route] for [routeName] should be in the prefix format,
+   * i.e. "/uploads/*", as backend will look for files documentRoot/matchedSufix
+   */*/
+  void addStaticView(String routeName, String documentRoot) {
+    StaticFileHandler fileHandler = new StaticFileHandler(documentRoot);
+    _requestNavigator.registerHandler(routeName, (httpRequest, urlParams)
+        => fileHandler.handleRequest(httpRequest, urlParams["_tail"]));
+  }
+
+  /**
+   * If nothing is matched.
+   */
   void addNotFoundView(RequestHandler handler) {
-    router.defaultStream.listen((HttpRequest httpRequest) {
-      _prepareRequestHandler(httpRequest, handler);
-    });
+    _requestNavigator.registerDefaultHandler((httpRequest, urlParams)
+        => prepareRequestHandler(httpRequest, urlParams, handler));
   }
 
-  void _stringToHash(String value, HMAC hmac){
-
+  void _stringToHash(String value, HMAC hmac) {
     Utf8Codec codec = new Utf8Codec();
     List<int> encodedUserId = codec.encode(value);
     hmac.add(encodedUserId);
   }
 
-  void authenticate(HttpResponse response, String userId){
+  void authenticate(HttpResponse response, String userId) {
     HMAC hmac = _hmacFactory();
     _stringToHash(userId, hmac);
     List<int> userIdSignature = hmac.close();
-    Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': userIdSignature}));
-    cookie.maxAge = 365 * 24 * 60 * 60;
-    cookie.path = '/';
-    cookie.httpOnly = true;
+    Cookie cookie = new Cookie('authentication', JSON.encode({
+      'userID': userId, 'signature': userIdSignature}));
+    cookie.maxAge = COOKIE_MAX_AGE;
+    cookie.path = COOKIE_PATH;
+    cookie.httpOnly = COOKIE_HTTP_ONLY;
     response.headers.add(HttpHeaders.SET_COOKIE, cookie);
   }
 
-  String getAuthenticatedUser(HttpHeaders headers){
-    if (headers[HttpHeaders.COOKIE] == null) return null;
+  String getAuthenticatedUser(HttpHeaders headers) {
+    if (headers[HttpHeaders.COOKIE] == null) {
+      return null;
+    }
 
     for (String cookieString in headers[HttpHeaders.COOKIE]) {
       Cookie cookie = new Cookie.fromSetCookieValue(cookieString);
@@ -121,13 +196,14 @@ class Backend {
       }
     }
     return null;
-
   }
 
-  void logout(Request request){
-    if (request.headers[HttpHeaders.COOKIE] == null) return;
-    for (String cookieString in request.headers[HttpHeaders.COOKIE]) {
+  void logout(Request request) {
+    if (request.headers[HttpHeaders.COOKIE] == null) {
+      return;
+    }
 
+    for (String cookieString in request.headers[HttpHeaders.COOKIE]) {
       Cookie cookie = new Cookie.fromSetCookieValue(cookieString);
       if (cookie.name == 'authentication') {
         cookie.maxAge = 0;
@@ -135,5 +211,4 @@ class Backend {
       }
     }
   }
-
 }
