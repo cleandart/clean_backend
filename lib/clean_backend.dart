@@ -24,7 +24,7 @@ class Request {
   /**
    * Params returned from parsing of the path, i.e. /path/{param}/
    */
-  final Map urlParams;
+  final Map match;
 
   final Map<String, dynamic> meta = {};
   String authenticatedUserId;
@@ -35,7 +35,7 @@ class Request {
       this.response,
       this.headers,
       this.httpRequest,
-      this.urlParams
+      this.match
   );
 
   String toString(){
@@ -46,7 +46,7 @@ class Request {
       'response' : response.toString(),
       'headers' : headers.toString(),
       'httpRequest' : httpRequest.toString(),
-      'urlParams' : urlParams.toString(),
+      'match' : match.toString(),
     });
   }
 }

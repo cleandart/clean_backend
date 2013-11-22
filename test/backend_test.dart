@@ -97,7 +97,7 @@ void main() {
 
       // when & then
       backend.prepareRequestHandler(request, {'key':'value'}, expectAsync1((Request request) {
-        expect(request.urlParams, equals({'key':'value'}));
+        expect(request.match, equals({'key':'value'}));
         expect(request.httpRequest.uri.path, equals('/static/'));
         expect(request.body, isNull);
         expect(request.headers, new isInstanceOf<HttpHeaders>());
