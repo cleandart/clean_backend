@@ -77,7 +77,7 @@ void main() {
       backend.addRoute('name', new Route('/'));
 
       // then
-      router.getLogs(callsTo('registerRoute')).verify(happenedOnce);
+      router.getLogs(callsTo('addRoute')).verify(happenedOnce);
 
     });
 

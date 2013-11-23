@@ -59,7 +59,7 @@ class Backend {
   /**
    * Register routes which are matched with request.uri .
    */
-  final Router _router;
+  final Router router;
 
   /**
    * Calls handlers associated with a particular routeName.
@@ -86,7 +86,7 @@ class Backend {
   /**
    * Constructor.
    */
-  Backend.config(this._server, this._router, this._requestNavigator,
+  Backend.config(this._server, this.router, this._requestNavigator,
       this._hmacFactory, this._httpBodyExtractor);
 
   /**
@@ -132,7 +132,7 @@ class Backend {
    * Adds [route] for a particular [route] so handler could be attached to [routeName]s.
    */
   void addRoute(String routeName, Route route){
-    _router.registerRoute(routeName, route);
+    router.addRoute(routeName, route);
   }
 
   /**
