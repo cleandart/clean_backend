@@ -207,6 +207,8 @@ class Backend {
       Cookie cookie = new Cookie.fromSetCookieValue(cookieString);
       if (cookie.name == 'authentication') {
         cookie.maxAge = 0;
+        cookie.path = COOKIE_PATH;
+        cookie.httpOnly = COOKIE_HTTP_ONLY;
         request.response.headers.add(HttpHeaders.SET_COOKIE, cookie);
       }
     }
