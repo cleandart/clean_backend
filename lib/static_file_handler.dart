@@ -190,6 +190,7 @@ class StaticFileHandler {
     ".txt"     : "text/plain; charset=utf-8",  // Assumes UTF-8 files.
     ".webp"    : "image/webp",
     ".webm"    : "video/webm",
-    ".zip"     : "application/zip"
+    ".zip"     : "application/zip",
+    ".css"     : "text/css",
   };
 }
