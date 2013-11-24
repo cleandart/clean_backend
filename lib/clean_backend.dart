@@ -52,7 +52,6 @@ class Request {
 }
 
 class Backend {
-  static final int COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
   static final String COOKIE_PATH = "/";
   static final bool COOKIE_HTTP_ONLY = true;
 
@@ -173,7 +172,7 @@ class Backend {
     List<int> userIdSignature = hmac.close();
     Cookie cookie = new Cookie('authentication', JSON.encode({
       'userID': userId, 'signature': userIdSignature}));
-    cookie.maxAge = COOKIE_MAX_AGE;
+    cookie.expires = new DateTime.now().add(new Duration(days: 365));
     cookie.path = COOKIE_PATH;
     cookie.httpOnly = COOKIE_HTTP_ONLY;
     response.headers.add(HttpHeaders.SET_COOKIE, cookie);
@@ -206,7 +205,7 @@ class Backend {
     for (String cookieString in request.headers[HttpHeaders.COOKIE]) {
       Cookie cookie = new Cookie.fromSetCookieValue(cookieString);
       if (cookie.name == 'authentication') {
-        cookie.maxAge = 0;
+        cookie.expires = new DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
         cookie.path = COOKIE_PATH;
         cookie.httpOnly = COOKIE_HTTP_ONLY;
         request.response.headers.add(HttpHeaders.SET_COOKIE, cookie);
