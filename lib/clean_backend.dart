@@ -198,18 +198,10 @@ class Backend {
   }
 
   void logout(Request request) {
-    if (request.headers[HttpHeaders.COOKIE] == null) {
-      return;
-    }
-
-    for (String cookieString in request.headers[HttpHeaders.COOKIE]) {
-      Cookie cookie = new Cookie.fromSetCookieValue(cookieString);
-      if (cookie.name == 'authentication') {
+        Cookie cookie = new Cookie('authentication', "");
         cookie.expires = new DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
         cookie.path = COOKIE_PATH;
         cookie.httpOnly = COOKIE_HTTP_ONLY;
         request.response.headers.add(HttpHeaders.SET_COOKIE, cookie);
-      }
-    }
   }
 }
