@@ -88,7 +88,6 @@ class Backend {
    */
   Function _notFoundViewHandler = (Request request) {
     request.response
-      ..write("Not Found!")
       ..statusCode = HttpStatus.NOT_FOUND
       ..close();
   };
