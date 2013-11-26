@@ -96,6 +96,8 @@ class Backend {
    */
   Backend.config(this._server, this.router, this._requestNavigator,
     this._hmacFactory, this._httpBodyExtractor) {
+    // Add default handler for not found views. Before not found view response
+    // is sent, check if URI ends with a slash and if not, try to add it.
     _requestNavigator.registerDefaultHandler((httpRequest, urlParams)
       => prepareRequestHandler(httpRequest, urlParams, (Request request) {
         var uri = request.httpRequest.uri;
@@ -181,8 +183,7 @@ class Backend {
   }
 
   /**
-   * If nothing is matched then try to add a slash on end and redirect. If still
-   * nothing is matched then there is a default [_notFoundViewHandler], but it
+   * If nothing is matched. There is a default [_notFoundViewHandler], but it
    * can be overwritten by this method.
    */
   void addNotFoundView(RequestHandler handler) {
