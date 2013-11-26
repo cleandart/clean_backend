@@ -54,7 +54,7 @@ class HttpRequestMock extends Mock implements HttpRequest {
 class StreamHttpRequestMock extends Mock implements Stream<HttpRequest> {}
 
 void main() {
-  group('(Backend)', () {
+  group('(Backend mock)', () {
     Backend backend;
     MockHttpServer server;
     MockRequestNavigator requestNavigator;
@@ -139,16 +139,41 @@ void main() {
       // then
       requestNavigator.getLogs(callsTo('registerDefaultHandler')).verify(happenedOnce);
     });
+  });
 
-    test('addNotFoundView with forgotten backslash - not matched route', () {
+  group('(Backend real)', () {
+    Backend backend;
+    MockHttpServer server;
+    RequestNavigator realRequestNavigator;
+    Router realRouter;
+    MockHMAC hmac;
+    HttpBodyHandlerMock httpBodyHandler;
+
+    setUp(() {
+      server = new MockHttpServer();
+      hmac = new MockHMAC();
+      httpBodyHandler = new HttpBodyHandlerMock();
+
       //setUp real-like environment - so the backend made redirect callback will be called
-      var realRouter = new Router("", {});
-      var realRequestNavigator = new RequestNavigator(
+      realRouter = new Router("", {});
+      realRequestNavigator = new RequestNavigator(
           new StreamHttpRequestMock(), realRouter);
 
       backend = new Backend.config(server, realRouter, realRequestNavigator,
           hmac, httpBodyHandler.processRequest);
+    });
 
+    test('addNotFoundView handler called', () {
+      // given
+      HttpRequestMock request = new HttpRequestMock(Uri.parse('/whatever/'));
+      HttpResponseMock response = request.response;
+      backend.addNotFoundView(expectAsync1((_) {}, count : 1));
+
+      // when
+      realRequestNavigator.processHttpRequest(request);
+    });
+
+    test('addNotFoundView with forgotten backslash - not matched route', () {
       // given
       backend.addRoute('static', new Route('/static/'));
       backend.addView('static', (_) {});
@@ -170,17 +195,9 @@ void main() {
     });
 
     test('addNotFoundView with forgotten backslash - matched route', () {
-      //setUp real-like environment - so the backend made redirect callback will be called
-      var realRouter = new Router("", {});
-      var realRequestNavigator = new RequestNavigator(
-          new StreamHttpRequestMock(), realRouter);
-
-      backend = new Backend.config(server, realRouter, realRequestNavigator,
-          hmac, httpBodyHandler.processRequest);
-
       // given
       backend.addRoute('directory', new Route('/static/*'));
-      backend.addView('directory', (_) {});
+      backend.addView('directory', expectAsync1((_) {}, count : 1));
       backend.addNotFoundView(expectAsync1((_) {}, count : 0));
 
       //incoming request
