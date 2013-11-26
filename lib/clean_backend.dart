@@ -83,10 +83,22 @@ class Backend {
   final _httpBodyExtractor;
 
   /**
+   * Default handler for NotFoundView.
+   */
+  Function _notFoundViewHandler = (Request request) {
+    request.response
+      ..statusCode = HttpStatus.NOT_FOUND
+      ..close();
+  };
+
+  /**
    * Constructor.
    */
   Backend.config(this._server, this.router, this._requestNavigator,
-      this._hmacFactory, this._httpBodyExtractor);
+      this._hmacFactory, this._httpBodyExtractor) {
+    _requestNavigator.registerDefaultHandler((httpRequest, urlParams)
+        => prepareRequestHandler(httpRequest, urlParams, _notFoundViewHandler));
+  }
 
   /**
    * Creates a new backend.
@@ -153,11 +165,11 @@ class Backend {
   }
 
   /**
-   * If nothing is matched.
+   * If nothing is matched. There is a default [_notFoundViewHandler], but it
+   * can be overwritten by this method.
    */
   void addNotFoundView(RequestHandler handler) {
-    _requestNavigator.registerDefaultHandler((httpRequest, urlParams)
-        => prepareRequestHandler(httpRequest, urlParams, handler));
+    _notFoundViewHandler = handler;
   }
 
   void _stringToHash(String value, HMAC hmac) {
