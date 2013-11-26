@@ -140,7 +140,7 @@ void main() {
       requestNavigator.getLogs(callsTo('registerDefaultHandler')).verify(happenedOnce);
     });
 
-    test('addNotFoundView with forgotten backslash', () {
+    test('addNotFoundView with forgotten backslash - not matched route', () {
       //setUp real-like environment - so the backend made redirect callback will be called
       var realRouter = new Router("", {});
       var realRequestNavigator = new RequestNavigator(
@@ -166,6 +166,33 @@ void main() {
         response.getLogs(callsTo('redirect')).verify(happenedOnce);
         expect(response.getLogs(callsTo('redirect')).last.args[0].path,
             equals('/static/'));
+      });
+    });
+
+    test('addNotFoundView with forgotten backslash - matched route', () {
+      //setUp real-like environment - so the backend made redirect callback will be called
+      var realRouter = new Router("", {});
+      var realRequestNavigator = new RequestNavigator(
+          new StreamHttpRequestMock(), realRouter);
+
+      backend = new Backend.config(server, realRouter, realRequestNavigator,
+          hmac, httpBodyHandler.processRequest);
+
+      // given
+      backend.addRoute('directory', new Route('/static/*'));
+      backend.addView('directory', (_) {});
+      backend.addNotFoundView(expectAsync1((_) {}, count : 0));
+
+      //incoming request
+      HttpRequestMock request = new HttpRequestMock(Uri.parse('/static/file'));
+      HttpResponseMock response = request.response;
+
+      // when
+      realRequestNavigator.processHttpRequest(request);
+
+      // then
+      return new Future.delayed(new Duration(milliseconds: 100), () {
+        response.getLogs(callsTo('redirect')).verify(neverHappened);
       });
     });
   });
