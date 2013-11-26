@@ -56,7 +56,7 @@ class HttpRequestMock extends Mock implements HttpRequest {
 class StreamHttpRequestMock extends Mock implements Stream<HttpRequest> {}
 
 void main() {
-  group('(Backend mock)', () {
+  group('(Backend)', () {
     Backend backend;
     MockHttpServer server;
     MockRequestNavigator requestNavigator;
@@ -132,108 +132,64 @@ void main() {
       requestNavigator.getLogs(callsTo('registerHandler')).verify(happenedOnce);
     });
 
-    test('addNotFoundView', () {
-      // given
-
-      // when
-      backend.addNotFoundView((_) {});
-
+    test('default handler is registered exactly once.', () {
       // then
-      requestNavigator.getLogs(callsTo('registerDefaultHandler')).verify(happenedOnce);
-    });
-  });
-
-  group('(Backend real)', () {
-    Backend backend;
-    MockHttpServer server;
-    RequestNavigator realRequestNavigator;
-    Router realRouter;
-    MockHMAC hmac;
-    HttpBodyHandlerMock httpBodyHandler;
-
-    setUp(() {
-      server = new MockHttpServer();
-      hmac = new MockHMAC();
-      httpBodyHandler = new HttpBodyHandlerMock();
-
-      //setUp real-like environment - so the backend made redirect callback will be called
-      realRouter = new Router("", {});
-      realRequestNavigator = new RequestNavigator(
-          new StreamHttpRequestMock(), realRouter);
-
-      backend = new Backend.config(server, realRouter, realRequestNavigator,
-          hmac, httpBodyHandler.processRequest);
+      requestNavigator.getLogs(callsTo('registerDefaultHandler'))
+        .verify(happenedOnce);
     });
 
-    test('addNotFoundView handler called', () {
+    test('adding slash when view is not found.', () {
       // given
-      HttpRequestMock request = new HttpRequestMock(Uri.parse('/whatever/'));
-      HttpResponseMock response = request.response;
-      backend.addNotFoundView(expectAsync1((_) {}, count : 1));
-
-      // when
-      realRequestNavigator.processHttpRequest(request);
-    });
-
-    test('default notFoundView with forgotten backslash.', () {
-      // given
-      backend.addRoute('static', new Route('/static/'));
-      backend.addView('static', (_) {});
-
-      // incoming request
+      Function defaultHandler = requestNavigator
+          .getLogs(callsTo('registerDefaultHandler')).first.args.first;
       HttpRequestMock request = new HttpRequestMock(Uri.parse('/static'));
-      HttpResponseMock response = request.response;
 
       // when
-      realRequestNavigator.processHttpRequest(request);
+      defaultHandler(request, null);
 
-      // then
+      //then
       return new Future.delayed(new Duration(milliseconds: 100), () {
-        response.getLogs(callsTo('redirect')).verify(happenedOnce);
-        expect(response.getLogs(callsTo('redirect')).last.args[0].path,
-            equals('/static/'));
+        var redirectCalls = request.response.getLogs(callsTo('redirect'));
+        redirectCalls.verify(happenedOnce);
+        expect(redirectCalls.first.args.first.path, equals('/static/'));
       });
     });
 
-    test('addNotFoundView with forgotten backslash - not matched route', () {
+    test('returning not found view if view has slash and is not found.', () {
       // given
-      backend.addRoute('static', new Route('/static/'));
-      backend.addView('static', (_) {});
-      backend.addNotFoundView(expectAsync1((_) {}, count : 0));
-
-      //incoming request
-      HttpRequestMock request = new HttpRequestMock(Uri.parse('/static'));
-      HttpResponseMock response = request.response;
+      Function defaultHandler = requestNavigator
+          .getLogs(callsTo('registerDefaultHandler')).first.args.first;
+      HttpRequestMock request = new HttpRequestMock(Uri.parse('/static/'));
+      Mock handler = new Mock();
+      backend.addNotFoundView((Request request) => handler(request));
 
       // when
-      realRequestNavigator.processHttpRequest(request);
+      defaultHandler(request, null);
 
-      // then
+      //then
       return new Future.delayed(new Duration(milliseconds: 100), () {
-        response.getLogs(callsTo('redirect')).verify(happenedOnce);
-        expect(response.getLogs(callsTo('redirect')).last.args[0].path,
-            equals('/static/'));
+        handler.getLogs().verify(happenedOnce);
       });
     });
 
-    test('addNotFoundView with forgotten backslash - matched route', () {
+    test('returning default not found view.', () {
       // given
-      backend.addRoute('directory', new Route('/static/*'));
-      backend.addView('directory', expectAsync1((_) {}, count : 1));
-      backend.addNotFoundView(expectAsync1((_) {}, count : 0));
-
-      //incoming request
-      HttpRequestMock request = new HttpRequestMock(Uri.parse('/static/file'));
-      HttpResponseMock response = request.response;
+      Function defaultHandler = requestNavigator
+          .getLogs(callsTo('registerDefaultHandler')).first.args.first;
+      HttpRequestMock request = new HttpRequestMock(Uri.parse('/static/'));
 
       // when
-      realRequestNavigator.processHttpRequest(request);
+      defaultHandler(request, null);
 
-      // then
+      //then
       return new Future.delayed(new Duration(milliseconds: 100), () {
-        response.getLogs(callsTo('redirect')).verify(neverHappened);
+        request.response.getLogs(callsTo('set statusCode'))
+          .verify(happenedOnce);
+        expect(request.response.getLogs(callsTo('set statusCode'))
+            .last.args.first, equals(HttpStatus.NOT_FOUND));
       });
     });
+
   });
 }
 
