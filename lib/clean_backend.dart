@@ -153,11 +153,25 @@ class Backend {
   }
 
   /**
-   * If nothing is matched.
+   * If nothing is matched then try to add a slash on end and redirect. If still
+   * not then handler will be called.
    */
   void addNotFoundView(RequestHandler handler) {
-    _requestNavigator.registerDefaultHandler((httpRequest, urlParams)
-        => prepareRequestHandler(httpRequest, urlParams, handler));
+    _requestNavigator.registerDefaultHandler((httpRequest, urlParams) {
+      var uri = httpRequest.uri;
+      if (!uri.path.endsWith('/')) {
+        httpRequest.response.redirect(new Uri(
+          scheme: uri.scheme,
+          host: uri.host,
+          port: uri.port,
+          path: uri.path + '/',
+          query: uri.query
+        ));
+      }
+      else{
+        prepareRequestHandler(httpRequest, urlParams, handler);
+      }
+    });
   }
 
   void _stringToHash(String value, HMAC hmac) {
