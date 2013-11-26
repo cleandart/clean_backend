@@ -175,6 +175,26 @@ void main() {
       realRequestNavigator.processHttpRequest(request);
     });
 
+    test('default notFoundView with forgotten backslash.', () {
+      // given
+      backend.addRoute('static', new Route('/static/'));
+      backend.addView('static', (_) {});
+
+      // incoming request
+      HttpRequestMock request = new HttpRequestMock(Uri.parse('/static'));
+      HttpResponseMock response = request.response;
+
+      // when
+      realRequestNavigator.processHttpRequest(request);
+
+      // then
+      return new Future.delayed(new Duration(milliseconds: 100), () {
+        response.getLogs(callsTo('redirect')).verify(happenedOnce);
+        expect(response.getLogs(callsTo('redirect')).last.args[0].path,
+            equals('/static/'));
+      });
+    });
+
     test('addNotFoundView with forgotten backslash - not matched route', () {
       // given
       backend.addRoute('static', new Route('/static/'));

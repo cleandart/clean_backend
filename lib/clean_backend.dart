@@ -97,7 +97,23 @@ class Backend {
   Backend.config(this._server, this.router, this._requestNavigator,
     this._hmacFactory, this._httpBodyExtractor) {
     _requestNavigator.registerDefaultHandler((httpRequest, urlParams)
-      => prepareRequestHandler(httpRequest, urlParams, _notFoundViewHandler));
+      => prepareRequestHandler(httpRequest, urlParams, (Request request) {
+        var uri = request.httpRequest.uri;
+        if (!uri.path.endsWith('/')) {
+          //we set request.httpRequest.response because of consistency
+          //  as (request.response := request.httpRequest.response)
+          request.httpRequest.response.redirect(new Uri(
+              scheme: uri.scheme,
+              host: uri.host,
+              port: uri.port,
+              path: uri.path + '/',
+              query: uri.query
+          ));
+        }
+        else{
+          _notFoundViewHandler(request);
+        }
+      }));
   }
 
   /**
@@ -170,23 +186,7 @@ class Backend {
    * can be overwritten by this method.
    */
   void addNotFoundView(RequestHandler handler) {
-    _notFoundViewHandler = ((Request request) {
-      var uri = request.httpRequest.uri;
-      if (!uri.path.endsWith('/')) {
-        //we set request.httpRequest.response because of consistency
-        //  as (request.response := request.httpRequest.response)
-        request.httpRequest.response.redirect(new Uri(
-          scheme: uri.scheme,
-          host: uri.host,
-          port: uri.port,
-          path: uri.path + '/',
-          query: uri.query
-        ));
-      }
-      else{
-        handler(request);
-      }
-    });
+    _notFoundViewHandler = handler;
   }
 
   void _stringToHash(String value, HMAC hmac) {
