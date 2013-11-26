@@ -83,10 +83,22 @@ class Backend {
   final _httpBodyExtractor;
 
   /**
+   * Default handler for NotFoundView.
+   */
+  RequestHandler _notFoundViewHandler = (Request request) {
+    request.response
+      ..statusCode = HttpStatus.NOT_FOUND
+      ..close();
+  };
+
+  /**
    * Constructor.
    */
   Backend.config(this._server, this.router, this._requestNavigator,
-      this._hmacFactory, this._httpBodyExtractor);
+    this._hmacFactory, this._httpBodyExtractor) {
+    _requestNavigator.registerDefaultHandler((httpRequest, urlParams)
+      => prepareRequestHandler(httpRequest, urlParams, _notFoundViewHandler));
+  }
 
   /**
    * Creates a new backend.
@@ -154,13 +166,16 @@ class Backend {
 
   /**
    * If nothing is matched then try to add a slash on end and redirect. If still
-   * not then handler will be called.
+   * nothing is matched then there is a default [_notFoundViewHandler], but it
+   * can be overwritten by this method.
    */
   void addNotFoundView(RequestHandler handler) {
-    _requestNavigator.registerDefaultHandler((httpRequest, urlParams) {
-      var uri = httpRequest.uri;
+    _notFoundViewHandler = ((Request request) {
+      var uri = request.httpRequest.uri;
       if (!uri.path.endsWith('/')) {
-        httpRequest.response.redirect(new Uri(
+        //we set request.httpRequest.response because of consistency
+        //  as (request.response := request.httpRequest.response)
+        request.httpRequest.response.redirect(new Uri(
           scheme: uri.scheme,
           host: uri.host,
           port: uri.port,
@@ -169,7 +184,7 @@ class Backend {
         ));
       }
       else{
-        prepareRequestHandler(httpRequest, urlParams, handler);
+        handler(request);
       }
     });
   }
