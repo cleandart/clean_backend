@@ -138,15 +138,16 @@ class Backend {
   }
 
   /**
-   * Transforms [httpRequest] with [urlParams] and creates [Request] which is passed
-   * asynchronously to [handler].
+   * Transforms [httpRequest] with [urlParams] and creates [Request] which is
+   * passed asynchronously to [handler].
    */
-  void prepareRequestHandler(HttpRequest httpRequest, Map urlParams, RequestHandler handler) {
-    _httpBodyExtractor(httpRequest).then((HttpBody body) {
+  Future prepareRequestHandler(HttpRequest httpRequest, Map urlParams,
+    RequestHandler handler) {
+    return _httpBodyExtractor(httpRequest).then((HttpBody body) {
 
       if (_defaulHttpHeaders != null) {
-        _defaulHttpHeaders.forEach((header) => httpRequest.response.headers.add(
-            header['name'],header['value']));
+        _defaulHttpHeaders.forEach((header) =>
+            httpRequest.response.headers.add(header['name'], header['value']));
       }
 
       Request request = new Request(body.type, body.body, httpRequest.response,
@@ -154,6 +155,7 @@ class Backend {
       request.authenticatedUserId = getAuthenticatedUser(request.headers);
 
       handler(request);
+      return true;
     });
   }
 

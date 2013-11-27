@@ -145,10 +145,9 @@ void main() {
       HttpRequestMock request = new HttpRequestMock(Uri.parse('/static'));
 
       // when
-      defaultHandler(request, null);
+      defaultHandler(request, null).then((_) {
 
-      //then
-      return new Future.delayed(new Duration(milliseconds: 100), () {
+        //then
         var redirectCalls = request.response.getLogs(callsTo('redirect'));
         redirectCalls.verify(happenedOnce);
         expect(redirectCalls.first.args.first.path, equals('/static/'));
@@ -164,10 +163,9 @@ void main() {
       backend.addNotFoundView((Request request) => handler(request));
 
       // when
-      defaultHandler(request, null);
+      defaultHandler(request, null).then((_){
 
-      //then
-      return new Future.delayed(new Duration(milliseconds: 100), () {
+        //then
         handler.getLogs().verify(happenedOnce);
       });
     });
@@ -179,10 +177,9 @@ void main() {
       HttpRequestMock request = new HttpRequestMock(Uri.parse('/static/'));
 
       // when
-      defaultHandler(request, null);
+      defaultHandler(request, null).then((_) {
 
-      //then
-      return new Future.delayed(new Duration(milliseconds: 100), () {
+        // then
         request.response.getLogs(callsTo('set statusCode'))
           .verify(happenedOnce);
         expect(request.response.getLogs(callsTo('set statusCode'))
