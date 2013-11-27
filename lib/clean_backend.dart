@@ -85,7 +85,7 @@ class Backend {
   /**
    * Default handler for NotFoundView.
    */
-  Function _notFoundViewHandler = (Request request) {
+  RequestHandler _notFoundViewHandler = (Request request) {
     request.response
       ..statusCode = HttpStatus.NOT_FOUND
       ..close();
@@ -95,9 +95,27 @@ class Backend {
    * Constructor.
    */
   Backend.config(this._server, this.router, this._requestNavigator,
-      this._hmacFactory, this._httpBodyExtractor) {
+    this._hmacFactory, this._httpBodyExtractor) {
+    // Add default handler for not found views. Before not found view response
+    // is sent, check if URI ends with a slash and if not, try to add it.
     _requestNavigator.registerDefaultHandler((httpRequest, urlParams)
-        => prepareRequestHandler(httpRequest, urlParams, _notFoundViewHandler));
+      => prepareRequestHandler(httpRequest, urlParams, (Request request) {
+        var uri = request.httpRequest.uri;
+        if (!uri.path.endsWith('/')) {
+          //we set request.httpRequest.response because of consistency
+          //  as (request.response := request.httpRequest.response)
+          request.httpRequest.response.redirect(new Uri(
+              scheme: uri.scheme,
+              host: uri.host,
+              port: uri.port,
+              path: uri.path + '/',
+              query: uri.query
+          ));
+        }
+        else{
+          _notFoundViewHandler(request);
+        }
+      }));
   }
 
   /**
@@ -120,15 +138,16 @@ class Backend {
   }
 
   /**
-   * Transforms [httpRequest] with [urlParams] and creates [Request] which is passed
-   * asynchronously to [handler].
+   * Transforms [httpRequest] with [urlParams] and creates [Request] which is
+   * passed asynchronously to [handler].
    */
-  void prepareRequestHandler(HttpRequest httpRequest, Map urlParams, RequestHandler handler) {
-    _httpBodyExtractor(httpRequest).then((HttpBody body) {
+  Future prepareRequestHandler(HttpRequest httpRequest, Map urlParams,
+    RequestHandler handler) {
+    return _httpBodyExtractor(httpRequest).then((HttpBody body) {
 
       if (_defaulHttpHeaders != null) {
-        _defaulHttpHeaders.forEach((header) => httpRequest.response.headers.add(
-            header['name'],header['value']));
+        _defaulHttpHeaders.forEach((header) =>
+            httpRequest.response.headers.add(header['name'], header['value']));
       }
 
       Request request = new Request(body.type, body.body, httpRequest.response,
@@ -136,6 +155,7 @@ class Backend {
       request.authenticatedUserId = getAuthenticatedUser(request.headers);
 
       handler(request);
+      return true;
     });
   }
 
