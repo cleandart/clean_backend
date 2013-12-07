@@ -53,7 +53,6 @@ class Request {
 }
 
 class Backend {
-  static final int COOKIE_MAX_AGE = 365 * 24 * 60 * 60;
   static final String COOKIE_PATH = "/";
   static final bool COOKIE_HTTP_ONLY = true;
 
@@ -85,10 +84,40 @@ class Backend {
   final _httpBodyExtractor;
 
   /**
+   * Default handler for NotFoundView.
+   */
+  RequestHandler _notFoundViewHandler = (Request request) {
+    request.response
+      ..statusCode = HttpStatus.NOT_FOUND
+      ..close();
+  };
+
+  /**
    * Constructor.
    */
   Backend.config(this._server, this.router, this._requestNavigator,
-      this._hmacFactory, this._httpBodyExtractor);
+    this._hmacFactory, this._httpBodyExtractor) {
+    // Add default handler for not found views. Before not found view response
+    // is sent, check if URI ends with a slash and if not, try to add it.
+    _requestNavigator.registerDefaultHandler((httpRequest, urlParams)
+      => prepareRequestHandler(httpRequest, urlParams, (Request request) {
+        var uri = request.httpRequest.uri;
+        if (!uri.path.endsWith('/')) {
+          //we set request.httpRequest.response because of consistency
+          //  as (request.response := request.httpRequest.response)
+          request.httpRequest.response.redirect(new Uri(
+              scheme: uri.scheme,
+              host: uri.host,
+              port: uri.port,
+              path: uri.path + '/',
+              query: uri.query
+          ));
+        }
+        else{
+          _notFoundViewHandler(request);
+        }
+      }));
+  }
 
   /**
    * Creates a new backend.
@@ -110,15 +139,16 @@ class Backend {
   }
 
   /**
-   * Transforms [httpRequest] with [urlParams] and creates [Request] which is passed
-   * asynchronously to [handler].
+   * Transforms [httpRequest] with [urlParams] and creates [Request] which is
+   * passed asynchronously to [handler].
    */
-  void prepareRequestHandler(HttpRequest httpRequest, Map urlParams, RequestHandler handler) {
-    _httpBodyExtractor(httpRequest).then((HttpBody body) {
+  Future prepareRequestHandler(HttpRequest httpRequest, Map urlParams,
+    RequestHandler handler) {
+    return _httpBodyExtractor(httpRequest).then((HttpBody body) {
 
       if (_defaulHttpHeaders != null) {
-        _defaulHttpHeaders.forEach((header) => httpRequest.response.headers.add(
-            header['name'],header['value']));
+        _defaulHttpHeaders.forEach((header) =>
+            httpRequest.response.headers.add(header['name'], header['value']));
       }
 
       Request request = new Request(body.type, body.body, httpRequest.response,
@@ -126,6 +156,7 @@ class Backend {
       request.authenticatedUserId = getAuthenticatedUser(request.headers);
 
       handler(request);
+      return true;
     });
   }
 
@@ -155,11 +186,11 @@ class Backend {
   }
 
   /**
-   * If nothing is matched.
+   * If nothing is matched. There is a default [_notFoundViewHandler], but it
+   * can be overwritten by this method.
    */
   void addNotFoundView(RequestHandler handler) {
-    _requestNavigator.registerDefaultHandler((httpRequest, urlParams)
-        => prepareRequestHandler(httpRequest, urlParams, handler));
+    _notFoundViewHandler = handler;
   }
 
   void _stringToHash(String value, HMAC hmac) {
@@ -174,7 +205,7 @@ class Backend {
     List<int> userIdSignature = hmac.close();
     Cookie cookie = new Cookie('authentication', JSON.encode({
       'userID': userId, 'signature': userIdSignature}));
-    cookie.maxAge = COOKIE_MAX_AGE;
+    cookie.expires = new DateTime.now().add(new Duration(days: 365));
     cookie.path = COOKIE_PATH;
     cookie.httpOnly = COOKIE_HTTP_ONLY;
     response.headers.add(HttpHeaders.SET_COOKIE, cookie);
@@ -200,16 +231,10 @@ class Backend {
   }
 
   void logout(Request request) {
-    if (request.headers[HttpHeaders.COOKIE] == null) {
-      return;
-    }
-
-    for (String cookieString in request.headers[HttpHeaders.COOKIE]) {
-      Cookie cookie = new Cookie.fromSetCookieValue(cookieString);
-      if (cookie.name == 'authentication') {
-        cookie.maxAge = 0;
+        Cookie cookie = new Cookie('authentication', "");
+        cookie.expires = new DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+        cookie.path = COOKIE_PATH;
+        cookie.httpOnly = COOKIE_HTTP_ONLY;
         request.response.headers.add(HttpHeaders.SET_COOKIE, cookie);
-      }
-    }
   }
 }

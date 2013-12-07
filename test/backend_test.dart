@@ -2,7 +2,7 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-library clean_backend.backend_test.dart;
+library clean_backend.backend_test;
 
 import 'dart:io';
 import 'dart:async';
@@ -53,6 +53,8 @@ class HttpRequestMock extends Mock implements HttpRequest {
   HttpRequestMock(this.uri);
 }
 
+class StreamHttpRequestMock extends Mock implements Stream<HttpRequest> {}
+
 void main() {
   group('(Backend)', () {
     Backend backend;
@@ -95,7 +97,6 @@ void main() {
 
     test('prepareRequestHandler', () {
       // given
-      HttpRequest req;
       var request = new HttpRequestMock(Uri.parse('/static/'));
 
       // when & then
@@ -131,15 +132,61 @@ void main() {
       requestNavigator.getLogs(callsTo('registerHandler')).verify(happenedOnce);
     });
 
-    test('addNotFoundView', () {
+    test('default handler is registered exactly once.', () {
+      // then
+      requestNavigator.getLogs(callsTo('registerDefaultHandler'))
+        .verify(happenedOnce);
+    });
+
+    test('adding slash when view is not found.', () {
       // given
+      Function defaultHandler = requestNavigator
+          .getLogs(callsTo('registerDefaultHandler')).first.args.first;
+      HttpRequestMock request = new HttpRequestMock(Uri.parse('/static'));
 
       // when
-      backend.addNotFoundView((_) {});
+      defaultHandler(request, null).then((_) {
 
-      // then
-      requestNavigator.getLogs(callsTo('registerDefaultHandler')).verify(happenedOnce);
+        //then
+        var redirectCalls = request.response.getLogs(callsTo('redirect'));
+        redirectCalls.verify(happenedOnce);
+        expect(redirectCalls.first.args.first.path, equals('/static/'));
+      });
     });
+
+    test('returning not found view if view has slash and is not found.', () {
+      // given
+      Function defaultHandler = requestNavigator
+          .getLogs(callsTo('registerDefaultHandler')).first.args.first;
+      HttpRequestMock request = new HttpRequestMock(Uri.parse('/static/'));
+      Mock handler = new Mock();
+      backend.addNotFoundView((Request request) => handler(request));
+
+      // when
+      defaultHandler(request, null).then((_){
+
+        //then
+        handler.getLogs().verify(happenedOnce);
+      });
+    });
+
+    test('returning default not found view.', () {
+      // given
+      Function defaultHandler = requestNavigator
+          .getLogs(callsTo('registerDefaultHandler')).first.args.first;
+      HttpRequestMock request = new HttpRequestMock(Uri.parse('/static/'));
+
+      // when
+      defaultHandler(request, null).then((_) {
+
+        // then
+        request.response.getLogs(callsTo('set statusCode'))
+          .verify(happenedOnce);
+        expect(request.response.getLogs(callsTo('set statusCode'))
+            .last.args.first, equals(HttpStatus.NOT_FOUND));
+      });
+    });
+
   });
 }
 
