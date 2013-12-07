@@ -2,7 +2,7 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-library clean_backend.static_file_handler;
+library clean_backend.static_file_handler_test;
 
 import 'package:unittest/unittest.dart';
 import 'package:unittest/mock.dart';
@@ -61,15 +61,15 @@ void main() {
     StaticFileHandler fileHandler;
 
     setUp(() {
-      fileHandler = new StaticFileHandler('./www');
+      fileHandler = new StaticFileHandler('./static_test');
     });
 
     test('allowed document root', () {
       // given & when & then
-      new StaticFileHandler("./www");
-      new StaticFileHandler("./www/");
-      new StaticFileHandler("www");
-      new StaticFileHandler("www/");
+      new StaticFileHandler("./static_test");
+      new StaticFileHandler("./static_test/");
+      new StaticFileHandler("static_test");
+      new StaticFileHandler("static_test/");
     });
 
     test('not allowed document root', () {
@@ -120,7 +120,7 @@ void main() {
       var response = request.response;
 
       // when
-      fileHandler.handleRequest(request, "www");
+      fileHandler.handleRequest(request, "static_test");
 
       // test
       response.when(callsTo("close")).thenCall(expectAsync0(() {

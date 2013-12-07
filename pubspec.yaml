@@ -1,15 +1,16 @@
 name: clean_backend
 version: 0.1.0
-authors:
-- Igor Liska <liska.igor4@gmail.com>
-- Peter Csiba <petherz@gmail.com>
-- Eduard Eiben <eduard.eiben@gmail.com>
-description: Serving client HttpRequests
+author: Clean Team <clean@vacuumlabs.com>
+description: Basic server-side environment.
 homepage: https://github.com/cleandart/clean_backend
+documentation: https://github.com/cleandart/clean_backend
+environment:
+  sdk: '>=0.8.10+6 <2.0.0'
 dependencies:
-  crypto: any
-  http_server: any
   clean_router:
     git: https://github.com/cleandart/clean_router
+  crypto: any
+  http_server: any
 dev_dependencies:
+  hop: any
   unittest: any

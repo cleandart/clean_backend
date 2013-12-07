@@ -9,8 +9,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:http_server/http_server.dart';
-import 'package:clean_backend/static_file_handler.dart';
 import 'package:clean_router/server.dart';
+
+import 'static_file_handler.dart';
 
 typedef void RequestHandler(Request request);
 
