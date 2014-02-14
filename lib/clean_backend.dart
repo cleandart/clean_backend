@@ -11,8 +11,6 @@ import 'package:crypto/crypto.dart';
 import 'package:http_server/http_server.dart';
 import 'package:clean_router/server.dart';
 
-import 'static_file_handler.dart';
-
 typedef void RequestHandler(Request request);
 
 class Request {
@@ -180,9 +178,34 @@ class Backend {
    * i.e. "/uploads/*", as backend will look for files documentRoot/matchedSufix
    */*/
   void addStaticView(String routeName, String documentRoot) {
-    StaticFileHandler fileHandler = new StaticFileHandler(documentRoot);
-    _requestNavigator.registerHandler(routeName, (httpRequest, urlParams)
-        => fileHandler.handleRequest(httpRequest, urlParams["_tail"]));
+    var vd = new VirtualDirectory(documentRoot);
+    _requestNavigator.registerHandler(routeName, (httpRequest, urlParams) {
+      var relativePath = urlParams['_tail'];
+      if (relativePath.split('/').contains('..')) {
+        httpRequest.response.statusCode = HttpStatus.NOT_FOUND;
+        httpRequest.response.close();
+        return;
+      }
+      String path = documentRoot + relativePath;
+      FileSystemEntity.type(path).then((type) {
+        switch (type) {
+          case FileSystemEntityType.FILE:
+            // If file, serve as such.
+            vd.serveFile(new File(path), httpRequest);
+            break;
+          case FileSystemEntityType.DIRECTORY:
+            // File not found, fall back to 404.
+            httpRequest.response.statusCode = HttpStatus.NOT_FOUND;
+            httpRequest.response.close();
+            break;
+          default:
+            // File not found, fall back to 404.
+            httpRequest.response.statusCode = HttpStatus.NOT_FOUND;
+            httpRequest.response.close();
+            break;
+         }
+      });
+    });
   }
 
   /**
