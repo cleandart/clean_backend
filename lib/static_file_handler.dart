@@ -5,6 +5,8 @@
 //Forked from https://github.com/DanieleSalatti/static-file-handler/blob/master/lib/static_file_handler.dart
 //TODO consider adding max range
 
+//TODO obsoleta not used any more
+
 library clean_backend.static_file_handler;
 
 import 'dart:async';
