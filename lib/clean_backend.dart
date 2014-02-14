@@ -11,8 +11,6 @@ import 'package:crypto/crypto.dart';
 import 'package:http_server/http_server.dart';
 import 'package:clean_router/server.dart';
 
-import 'static_file_handler.dart';
-
 typedef void RequestHandler(Request request);
 
 class Request {
@@ -181,9 +179,6 @@ class Backend {
    */*/
   void addStaticView(String routeName, String documentRoot) {
     var vd = new VirtualDirectory(documentRoot);
-    /*StaticFileHandler fileHandler = new StaticFileHandler(documentRoot);
-    _requestNavigator.registerHandler(routeName, (httpRequest, urlParams)
-        => fileHandler.handleRequest(httpRequest, urlParams["_tail"]));*/
     _requestNavigator.registerHandler(routeName, (httpRequest, urlParams) {
       var relativePath = urlParams['_tail'];
       if (relativePath.split('/').contains('..')) {
@@ -192,7 +187,6 @@ class Backend {
         return;
       }
       String path = documentRoot + relativePath;
-      print(path);
       FileSystemEntity.type(path).then((type) {
         switch (type) {
           case FileSystemEntityType.FILE:
