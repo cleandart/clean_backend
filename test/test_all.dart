@@ -5,7 +5,6 @@
 library clean_backend.test_all;
 
 import "cookie_test.dart" as cookie_test;
-import "static_file_handler_test.dart" as static_file_handler_test;
 import "backend_test.dart" as backend_test;
 
 import 'package:unittest/unittest.dart';
@@ -20,6 +19,5 @@ main() {
 void run(configuration) {
   unittestConfiguration = configuration;
   cookie_test.main();
-  static_file_handler_test.main();
   backend_test.main();
 }
