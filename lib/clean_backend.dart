@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:http_server/http_server.dart';
 import 'package:clean_router/server.dart';
+import 'package:path/path.dart' as p;
 
 typedef void RequestHandler(Request request);
 
@@ -186,7 +187,7 @@ class Backend {
         httpRequest.response.close();
         return;
       }
-      String path = documentRoot + relativePath;
+      String path = p.join(documentRoot, relativePath);
       FileSystemEntity.type(path).then((type) {
         switch (type) {
           case FileSystemEntityType.FILE:

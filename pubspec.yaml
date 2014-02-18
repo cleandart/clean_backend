@@ -1,8 +1,8 @@
 name: clean_backend
-version: 0.1.2
 author: Clean Team <clean@vacuumlabs.com>
-description: Basic server-side environment.
+version: 0.1.3
 homepage: https://github.com/cleandart/clean_backend
+description: Basic server-side environment.
 documentation: https://github.com/cleandart/clean_backend
 environment:
   sdk: '>=0.8.10+6 <2.0.0'
