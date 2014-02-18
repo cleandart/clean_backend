@@ -17,7 +17,19 @@ import 'package:clean_router/server.dart';
 class MockHttpServer extends Mock implements HttpServer {}
 class MockRouter extends Mock implements Router {}
 class MockRequestNavigator extends Mock implements RequestNavigator {}
-class MockHMAC extends Mock implements HMAC {}
+class MockHMAC extends Mock implements HMAC {
+  var listOfInt = [];
+  MockHMAC();
+  add(List<int> val) => listOfInt.addAll(val);
+  close() => listOfInt.map((int i) => i+10).toList();
+  verify(List<int> digest) {
+    if (digest.length != listOfInt.length) return false;
+      for(int i = 0 ; i < digest.length; i++)
+        if (digest[i] != listOfInt[i]+10) return false;
+    return true;
+  }
+}
+
 class HttpBodyMock extends Mock implements HttpBody {}
 
 class HttpResponseMock extends Mock implements HttpResponse{
@@ -61,17 +73,15 @@ void main() {
     MockHttpServer server;
     MockRequestNavigator requestNavigator;
     MockRouter router;
-    MockHMAC hmac;
     HttpBodyHandlerMock httpBodyHandler;
 
     setUp(() {
       server = new MockHttpServer();
       router = new MockRouter();
       requestNavigator = new MockRequestNavigator();
-      hmac = new MockHMAC();
       httpBodyHandler = new HttpBodyHandlerMock();
 
-      backend = new Backend.config(server, router, requestNavigator, hmac, httpBodyHandler.processRequest);
+      backend = new Backend.config(server, router, requestNavigator, ()=>new MockHMAC(), httpBodyHandler.processRequest);
     });
 
     test('addRoute', () {
@@ -185,6 +195,20 @@ void main() {
         expect(request.response.getLogs(callsTo('set statusCode'))
             .last.args.first, equals(HttpStatus.NOT_FOUND));
       });
+    });
+
+    test('signing and verifing message', (){
+      //given
+      var msg = 'random msg';
+
+      //when
+      var signature = backend.sign(msg);
+      var badSignature = signature.toList()..add(5);
+
+      //then
+      expect(backend.verifySignature(msg, signature), isTrue);
+      expect(backend.verifySignature(msg, badSignature), isFalse);
+      expect(backend.verifySignature('another msg', signature), isFalse);
     });
 
   });

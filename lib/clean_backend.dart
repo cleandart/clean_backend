@@ -216,6 +216,18 @@ class Backend {
     _notFoundViewHandler = handler;
   }
 
+  List<int> sign(String msg) {
+    HMAC hmac = _hmacFactory();
+    _stringToHash(msg, hmac);
+    return hmac.close();
+  }
+
+  bool verifySignature(String msg, List<int> signature) {
+    HMAC hmac = _hmacFactory();
+    _stringToHash(msg, hmac);
+    return hmac.verify(signature);
+  }
+
   void _stringToHash(String value, HMAC hmac) {
     Utf8Codec codec = new Utf8Codec();
     List<int> encodedUserId = codec.encode(value);
@@ -223,9 +235,7 @@ class Backend {
   }
 
   void authenticate(HttpResponse response, String userId) {
-    HMAC hmac = _hmacFactory();
-    _stringToHash(userId, hmac);
-    List<int> userIdSignature = hmac.close();
+    List<int> userIdSignature = sign(userId);
     Cookie cookie = new Cookie('authentication', JSON.encode({
       'userID': userId, 'signature': userIdSignature}));
     cookie.expires = new DateTime.now().add(new Duration(days: 365));
@@ -238,14 +248,11 @@ class Backend {
     if (headers[HttpHeaders.COOKIE] == null) {
       return null;
     }
-
     for (String cookieString in headers[HttpHeaders.COOKIE]) {
       Cookie cookie = new Cookie.fromSetCookieValue(cookieString);
       if (cookie.name == 'authentication') {
-        HMAC hmac = _hmacFactory();
         Map authentication = JSON.decode(cookie.value);
-        _stringToHash(authentication['userID'], hmac);
-        if (hmac.verify(authentication['signature'])){
+        if (verifySignature(authentication['userID'], authentication['signature'])) {
           return authentication['userID'];
         }
       }
