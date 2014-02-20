@@ -121,9 +121,12 @@ class Backend {
   /**
    * Creates a new backend.
    */
-  static Future<Backend> bind(key, hashMethod, {String host: "0.0.0.0", int port: 8080}){
+  static Future<Backend> bind( String host, int port, List<int> key, {Hash hashMethod: null, String presentedHost: null}){
+    if (presentedHost == null) presentedHost = '$host:$port';
+    if (hashMethod == null) hashMethod = new SHA256();
+
     return HttpServer.bind(host, port).then((httpServer) {
-      var router = new Router("http://$host:$port", {});
+      var router = new Router("http://$presentedHost", {});
       var requestNavigator = new RequestNavigator(httpServer.asBroadcastStream(), router);
       return new Backend.config(httpServer, router, requestNavigator,
           () => new HMAC(hashMethod, key), HttpBodyHandler.processRequest);
