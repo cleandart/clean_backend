@@ -1,5 +1,5 @@
 name: clean_backend
-version: 0.1.2
+version: 0.2.0
 author: Clean Team <clean@vacuumlabs.com>
 description: Basic server-side environment.
 homepage: https://github.com/cleandart/clean_backend

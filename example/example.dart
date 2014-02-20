@@ -62,7 +62,7 @@ class SimpleRequestHandler {
 }
 
 void main() {
-  Backend.bind([], new SHA256()).then((backend) {
+  Backend.bind('0.0.0.0', 8080, []).then((backend) {
     SimpleRequestHandler requestHandler = new SimpleRequestHandler(backend);
 
     //The order matters here
