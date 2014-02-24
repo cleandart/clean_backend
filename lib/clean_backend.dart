@@ -238,14 +238,15 @@ class Backend {
     hmac.add(encodedUserId);
   }
 
-  void authenticate(HttpResponse response, String userId) {
+  void authenticate(Request request, String userId) {
     List<int> userIdSignature = sign(userId);
     Cookie cookie = new Cookie('authentication', JSON.encode({
       'userID': userId, 'signature': userIdSignature}));
     cookie.expires = new DateTime.now().add(new Duration(days: 365));
     cookie.path = COOKIE_PATH;
     cookie.httpOnly = COOKIE_HTTP_ONLY;
-    response.headers.add(HttpHeaders.SET_COOKIE, cookie);
+    request.response.headers.add(HttpHeaders.SET_COOKIE, cookie);
+    request.authenticatedUserId = userId;
   }
 
   String getAuthenticatedUser(HttpHeaders headers) {

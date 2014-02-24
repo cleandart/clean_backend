@@ -60,14 +60,14 @@ void main() {
 
     test('Authenticate test (T01).', () {
       //given
-      MockHttpResponse response = new MockHttpResponse();
+      MockRequest request = new MockRequest();
       String userId = 'john.doe25';
 
       //when
-      backend.authenticate(response, userId);
+      backend.authenticate(request, userId);
 
       //then
-      var cookie = response.headers.getLogs(callsTo('add', HttpHeaders.SET_COOKIE)).last.args[1] as Cookie;
+      var cookie = request.response.headers.getLogs(callsTo('add', HttpHeaders.SET_COOKIE)).last.args[1] as Cookie;
       expect(cookie.path, equals(Backend.COOKIE_PATH));
       expect(cookie.httpOnly, isTrue);
       expect(cookie.name, equals('authentication'));
