@@ -121,7 +121,7 @@ class Backend {
   /**
    * Creates a new backend.
    */
-  static Future<Backend> bind( String host, int port, List<int> key, {Hash hashMethod: null, String presentedHost: null}){
+  static Future<Backend> bind( String host, int port, String key, {Hash hashMethod: null, String presentedHost: null}){
     if (presentedHost == null) presentedHost = '$host:$port';
     if (hashMethod == null) hashMethod = new SHA256();
 
@@ -129,7 +129,7 @@ class Backend {
       var router = new Router("http://$presentedHost", {});
       var requestNavigator = new RequestNavigator(httpServer.asBroadcastStream(), router);
       return new Backend.config(httpServer, router, requestNavigator,
-          () => new HMAC(hashMethod, key), HttpBodyHandler.processRequest);
+          () => new HMAC(hashMethod, UTF8.encode(key)), HttpBodyHandler.processRequest);
     });
   }
 
@@ -220,16 +220,16 @@ class Backend {
     _notFoundViewHandler = handler;
   }
 
-  List<int> sign(String msg) {
+  String sign(String msg) {
     HMAC hmac = _hmacFactory();
     _stringToHash(msg, hmac);
-    return hmac.close();
+    return CryptoUtils.bytesToBase64(hmac.close(), urlSafe: true);
   }
 
-  bool verifySignature(String msg, List<int> signature) {
+  bool verifySignature(String msg, String signature) {
     HMAC hmac = _hmacFactory();
     _stringToHash(msg, hmac);
-    return hmac.verify(signature);
+    return hmac.verify(CryptoUtils.base64StringToBytes(signature));
   }
 
   void _stringToHash(String value, HMAC hmac) {
@@ -239,7 +239,7 @@ class Backend {
   }
 
   void authenticate(Request request, String userId) {
-    List<int> userIdSignature = sign(userId);
+    String userIdSignature =  sign(userId);
     Cookie cookie = new Cookie('authentication', JSON.encode({
       'userID': userId, 'signature': userIdSignature}));
     cookie.expires = new DateTime.now().add(new Duration(days: 365));
@@ -257,6 +257,9 @@ class Backend {
       Cookie cookie = new Cookie.fromSetCookieValue(cookieString);
       if (cookie.name == 'authentication') {
         Map authentication = JSON.decode(cookie.value);
+        if (authentication['signature'].runtimeType != String){ // if someone has old cookies with List<int> type
+          return null;
+        }
         if (verifySignature(authentication['userID'], authentication['signature'])) {
           return authentication['userID'];
         }
