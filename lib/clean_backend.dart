@@ -257,7 +257,7 @@ class Backend {
       Cookie cookie = new Cookie.fromSetCookieValue(cookieString);
       if (cookie.name == 'authentication') {
         Map authentication = JSON.decode(cookie.value);
-        if (authentication['signature'].runtimeType != String){ // if someone has old cookies with List<int> type
+        if (authentication['signature'] is! String) { // if someone has old cookies with List<int> type
           return null;
         }
         if (verifySignature(authentication['userID'], authentication['signature'])) {
