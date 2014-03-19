@@ -203,7 +203,7 @@ void main() {
 
       //when
       var signature = backend.sign(msg);
-      var badSignature = signature.toList()..add(5);
+      var badSignature = '1234${signature}';
 
       //then
       expect(backend.verifySignature(msg, signature), isTrue);

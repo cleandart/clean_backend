@@ -72,7 +72,7 @@ void main() {
       expect(cookie.httpOnly, isTrue);
       expect(cookie.name, equals('authentication'));
       expect(cookie.value, equals(JSON.encode({
-        'userID': userId, 'signature': signature})));
+        'userID': userId, 'signature': CryptoUtils.bytesToBase64(signature)})));
 
       expect(cookie.expires.isAfter(new DateTime.now().add(new Duration(days: 300))), isTrue);
     });
@@ -80,7 +80,7 @@ void main() {
     test('get userId from cookies test (T02).', () {
       //given
       String userId = 'john.doe25';
-      Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': signature}));
+      Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': CryptoUtils.bytesToBase64(signature)}));
       MockHttpHeaders headers = new MockHttpHeaders();
       headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn([cookie.toString()]);
 
@@ -107,7 +107,7 @@ void main() {
     test('get userId from cookies test - bad authentication code (T04).', () {
       //given
       String userId = 'john.doe25';
-      Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': [0,1,0,0,0,0]}));
+      Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': CryptoUtils.bytesToBase64([0,1,0,0,0,0])}));
       MockHttpHeaders headers = new MockHttpHeaders();
       headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn([cookie.toString()]);
 
@@ -123,7 +123,7 @@ void main() {
       //given
       String userId = 'john.doe25';
       MockRequest request = new MockRequest();
-      Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': signature}));
+      Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': CryptoUtils.bytesToBase64(signature)}));
       cookie.path = Backend.COOKIE_PATH;
       cookie.httpOnly = true;
       request.headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn([cookie.toString()]);
