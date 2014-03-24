@@ -81,24 +81,18 @@ void main() {
       //given
       String userId = 'john.doe25';
       Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': CryptoUtils.bytesToBase64(signature)}));
-      MockHttpHeaders headers = new MockHttpHeaders();
-      headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn([cookie.toString()]);
 
       //when
-      String getUserId = backend.getAuthenticatedUser(headers);
+      String getUserId = backend.getAuthenticatedUser([cookie]);
 
       //then
       expect(getUserId, equals(userId));
     });
 
     test('get userId from cookies test - not existing user (T03).', () {
-      //given
-      String userId = 'john.doe25';
-      MockHttpHeaders headers = new MockHttpHeaders();
-      headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn(null);
 
       //when
-      String getUserId = backend.getAuthenticatedUser(headers);
+      String getUserId = backend.getAuthenticatedUser(null);
 
       //then
       expect(getUserId, isNull);
@@ -108,11 +102,9 @@ void main() {
       //given
       String userId = 'john.doe25';
       Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': CryptoUtils.bytesToBase64([0,1,0,0,0,0])}));
-      MockHttpHeaders headers = new MockHttpHeaders();
-      headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn([cookie.toString()]);
 
       //when
-      String getUserId = backend.getAuthenticatedUser(headers);
+      String getUserId = backend.getAuthenticatedUser([cookie]);
 
       //then
       expect(getUserId, isNull);

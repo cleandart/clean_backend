@@ -155,7 +155,7 @@ class Backend {
 
       Request request = new Request(body.type, body.body, httpRequest.response,
           httpRequest.headers, httpRequest, urlParams);
-      request.authenticatedUserId = getAuthenticatedUser(request.headers);
+      request.authenticatedUserId = getAuthenticatedUser(request.httpRequest.cookies);
 
       handler(request);
       return true;
@@ -249,12 +249,11 @@ class Backend {
     request.authenticatedUserId = userId;
   }
 
-  String getAuthenticatedUser(HttpHeaders headers) {
-    if (headers[HttpHeaders.COOKIE] == null) {
+  String getAuthenticatedUser(List<Cookie> cookies) {
+    if (cookies == null) {
       return null;
     }
-    for (String cookieString in headers[HttpHeaders.COOKIE]) {
-      Cookie cookie = new Cookie.fromSetCookieValue(cookieString);
+    for (Cookie cookie in cookies) {
       if (cookie.name == 'authentication') {
         Map authentication = JSON.decode(cookie.value);
         if (authentication['signature'] is! String) { // if someone has old cookies with List<int> type

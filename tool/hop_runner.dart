@@ -11,7 +11,7 @@ import '../test/test_all.dart' as test_all;
 void main (List<String> args) {
   var paths = ['lib/clean_backend.dart'];
 
-  addTask('docs', createDartDocTask(paths, linkApi: true));
+  //addTask('docs', createDartDocTask(paths, linkApi: true));
   addTask('analyze', createAnalyzerTask(paths));
   addTask('test', createUnitTestTask(test_all.run));
 
