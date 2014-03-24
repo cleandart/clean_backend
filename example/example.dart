@@ -31,7 +31,7 @@ class SimpleRequestHandler {
 
   void handleIsAuthenticatedRequest(Request request) {
     print('incoming IsAuthenticatedRequest:$request');
-    String userId = backend.getAuthenticatedUser(request.headers);
+    String userId = backend.getAuthenticatedUser(request.httpRequest.cookies);
     var cookies = request.headers[HttpHeaders.SET_COOKIE];
     var cookies2 = request.headers[HttpHeaders.COOKIE];
     request.response
