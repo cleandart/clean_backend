@@ -51,6 +51,20 @@ class Request {
   }
 }
 
+/**
+ * Convert any JSON encodable [value] to cookie-safe string value as specified
+ * by RFC 6265.
+ */
+String toCookieString(value) =>
+    CryptoUtils.bytesToBase64(UTF8.encode(JSON.encode(value)), urlSafe: true);
+
+/**
+ * Parse string value encoded by [toCookieString] method and return originaly
+ * encoded object.
+ */
+dynamic parseCookieString(String str) =>
+    JSON.decode(UTF8.decode(CryptoUtils.base64StringToBytes(str)));
+
 class Backend {
   static final String COOKIE_PATH = "/";
   static final bool COOKIE_HTTP_ONLY = true;
@@ -238,10 +252,33 @@ class Backend {
     hmac.add(encodedUserId);
   }
 
+  _parseAuthenticationValue(String value) {
+    var auth = parseCookieString(value);
+
+    // No user signed
+    if (auth == null) return null;
+
+    var userId = auth['userID'];
+    var signature = auth['signature'];
+
+    if (userId is! String || signature is! String) {
+      throw new FormatException('Invalid authentication cookie: $auth');
+    }
+
+    if (!verifySignature(userId, signature)) {
+      throw new FormatException('Signature $signature does not match $userId');
+    }
+
+    return userId;
+  }
+
+  _toAuthenticationValue(String userId) {
+    if (userId == null) return toCookieString(null);
+    else return toCookieString({'userID': userId, 'signature': sign(userId)});
+  }
+
   void authenticate(Request request, String userId) {
-    String userIdSignature =  sign(userId);
-    Cookie cookie = new Cookie('authentication', JSON.encode({
-      'userID': userId, 'signature': userIdSignature}));
+    Cookie cookie = new Cookie('authentication', _toAuthenticationValue(userId));
     cookie.expires = new DateTime.now().add(new Duration(days: 365));
     cookie.path = COOKIE_PATH;
     cookie.httpOnly = COOKIE_HTTP_ONLY;
@@ -250,17 +287,12 @@ class Backend {
   }
 
   String getAuthenticatedUser(List<Cookie> cookies) {
-    if (cookies == null) {
-      return null;
-    }
     for (Cookie cookie in cookies) {
       if (cookie.name == 'authentication') {
-        Map authentication = JSON.decode(cookie.value);
-        if (authentication['signature'] is! String) { // if someone has old cookies with List<int> type
+        try {
+          return _parseAuthenticationValue(cookie.value);
+        } on FormatException {
           return null;
-        }
-        if (verifySignature(authentication['userID'], authentication['signature'])) {
-          return authentication['userID'];
         }
       }
     }
@@ -268,10 +300,10 @@ class Backend {
   }
 
   void logout(Request request) {
-        Cookie cookie = new Cookie('authentication', "");
-        cookie.expires = new DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
-        cookie.path = COOKIE_PATH;
-        cookie.httpOnly = COOKIE_HTTP_ONLY;
-        request.response.headers.add(HttpHeaders.SET_COOKIE, cookie);
+    Cookie cookie = new Cookie('authentication', _toAuthenticationValue(null));
+    cookie.expires = new DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+    cookie.path = COOKIE_PATH;
+    cookie.httpOnly = COOKIE_HTTP_ONLY;
+    request.response.headers.add(HttpHeaders.SET_COOKIE, cookie);
   }
 }

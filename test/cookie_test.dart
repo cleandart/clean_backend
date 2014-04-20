@@ -43,6 +43,8 @@ class MockHttpResponse extends Mock implements HttpResponse{
 class MockRequest extends Mock implements Request {
   var headers = new MockHttpHeaders();
   var response = new MockHttpResponse();
+
+  Cookie get lastCookie => response.headers.getLogs(callsTo('add', HttpHeaders.SET_COOKIE)).last.args[1] as Cookie;
 }
 
 void main() {
@@ -67,32 +69,19 @@ void main() {
       backend.authenticate(request, userId);
 
       //then
-      var cookie = request.response.headers.getLogs(callsTo('add', HttpHeaders.SET_COOKIE)).last.args[1] as Cookie;
+      var cookie = request.lastCookie;
       expect(cookie.path, equals(Backend.COOKIE_PATH));
       expect(cookie.httpOnly, isTrue);
       expect(cookie.name, equals('authentication'));
-      expect(cookie.value, equals(JSON.encode({
-        'userID': userId, 'signature': CryptoUtils.bytesToBase64(signature)})));
-
       expect(cookie.expires.isAfter(new DateTime.now().add(new Duration(days: 300))), isTrue);
-    });
 
-    test('get userId from cookies test (T02).', () {
-      //given
-      String userId = 'john.doe25';
-      Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': CryptoUtils.bytesToBase64(signature)}));
-
-      //when
-      String getUserId = backend.getAuthenticatedUser([cookie]);
-
-      //then
-      expect(getUserId, equals(userId));
+      expect(backend.getAuthenticatedUser([cookie]), equals(userId));
     });
 
     test('get userId from cookies test - not existing user (T03).', () {
 
       //when
-      String getUserId = backend.getAuthenticatedUser(null);
+      String getUserId = backend.getAuthenticatedUser([]);
 
       //then
       expect(getUserId, isNull);
@@ -101,7 +90,7 @@ void main() {
     test('get userId from cookies test - bad authentication code (T04).', () {
       //given
       String userId = 'john.doe25';
-      Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': CryptoUtils.bytesToBase64([0,1,0,0,0,0])}));
+      Cookie cookie = new Cookie('authentication', toCookieString({'userID': userId, 'signature': CryptoUtils.bytesToBase64([0,1,0,0,0,0])}));
 
       //when
       String getUserId = backend.getAuthenticatedUser([cookie]);
@@ -115,20 +104,19 @@ void main() {
       //given
       String userId = 'john.doe25';
       MockRequest request = new MockRequest();
-      Cookie cookie = new Cookie('authentication', JSON.encode({'userID': userId, 'signature': CryptoUtils.bytesToBase64(signature)}));
-      cookie.path = Backend.COOKIE_PATH;
-      cookie.httpOnly = true;
+      backend.authenticate(request, userId);
+      var cookie = request.lastCookie;
       request.headers.when(callsTo('[]', HttpHeaders.COOKIE)).alwaysReturn([cookie.toString()]);
 
       //when
       backend.logout(request);
+      print(request.lastCookie);
       cookie.expires = new DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
       cookie.value = '';
 
       //then
-      List addedHeader = request.response.headers.getLogs(callsTo('add')).last.args;
-      expect(addedHeader[0], equals(HttpHeaders.SET_COOKIE));
-      expect(addedHeader[1].toString(), equals(cookie.toString()));
+      expect(backend.getAuthenticatedUser([request.lastCookie]), isNull);
+      expect(request.lastCookie.expires.isBefore(new DateTime(2000)), isTrue);
     });
   });
  }

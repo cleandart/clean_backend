@@ -3,7 +3,6 @@
 // BSD-style license that can be found in the LICENSE file.
 
 import 'dart:io';
-import 'package:crypto/crypto.dart';
 import 'package:clean_backend/clean_backend.dart';
 import 'package:clean_router/common.dart';
 
@@ -21,7 +20,7 @@ class SimpleRequestHandler {
 
   void handleAuthenticateRequest(Request request) {
     print('incoming AuthenticateRequest:$request');
-    backend.authenticate(request.response, 'jozko');
+    backend.authenticate(request, 'jozko');
     var cookies = request.response.headers[HttpHeaders.SET_COOKIE];
     request.response
       ..headers.contentType = ContentType.parse("text/html")
@@ -62,7 +61,7 @@ class SimpleRequestHandler {
 }
 
 void main() {
-  Backend.bind('0.0.0.0', 8080, []).then((backend) {
+  Backend.bind('0.0.0.0', 8080, "secret").then((backend) {
     SimpleRequestHandler requestHandler = new SimpleRequestHandler(backend);
 
     //The order matters here
