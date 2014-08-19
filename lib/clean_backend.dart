@@ -11,8 +11,23 @@ import 'package:crypto/crypto.dart';
 import 'package:http_server/http_server.dart';
 import 'package:clean_router/server.dart';
 import 'package:path/path.dart' as p;
+import 'package:logging/logging.dart';
 
 typedef void RequestHandler(Request request);
+
+Logger logger = new Logger('clean_backend');
+
+logFailedRequest(processRequest){
+  return (HttpRequest request, {Encoding defaultEncoding: UTF8}){
+    return processRequest(request, defaultEncoding:defaultEncoding)
+        .catchError((e,s){
+           logger.shout("Headers ${request.headers}\n"
+                        "Cookies ${request.cookies}\n"
+                        "Body ${request.connectionInfo.remoteAddress}"
+           , e, s);
+        });
+  };
+}
 
 class Request {
   final String type;
@@ -143,7 +158,7 @@ class Backend {
       var router = new Router("http://$presentedHost", {});
       var requestNavigator = new RequestNavigator(httpServer.asBroadcastStream(), router);
       return new Backend.config(httpServer, router, requestNavigator,
-          () => new HMAC(hashMethod, UTF8.encode(key)), HttpBodyHandler.processRequest);
+          () => new HMAC(hashMethod, UTF8.encode(key)), logFailedRequest(HttpBodyHandler.processRequest));
     });
   }
 
