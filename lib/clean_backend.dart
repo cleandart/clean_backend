@@ -21,9 +21,9 @@ logFailedRequest(processRequest){
   return (HttpRequest request, {Encoding defaultEncoding: UTF8}){
     return processRequest(request, defaultEncoding:defaultEncoding)
         .catchError((e,s){
-           logger.shout("Headers ${request.headers}\n"
-                        "Cookies ${request.cookies}\n"
-                        "Body ${request.connectionInfo.remoteAddress}"
+           logger.shout("Headers:\n${request.headers}\n"
+                        "Cookies:\n${request.cookies}\n"
+                        "Body:\n${request.connectionInfo.remoteAddress}"
            , e, s);
         });
   };
