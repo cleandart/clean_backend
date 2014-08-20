@@ -13,6 +13,33 @@ import 'package:clean_router/server.dart';
 import 'package:path/path.dart' as p;
 import 'package:logging/logging.dart';
 
+class SafeRequestNavigator implements RequestNavigator {
+
+  RequestNavigator _requestNavigator;
+
+  SafeRequestNavigator(this._requestNavigator);
+
+  void registerHandler(String routeName, dynamic handler){
+    _requestNavigator.registerHandler(routeName, handler);
+  }
+
+  void registerDefaultHandler(dynamic handler){
+    _requestNavigator.registerDefaultHandler(handler);
+  }
+
+  void processHttpRequest(HttpRequest request){
+    runZoned((){
+      _requestNavigator.processHttpRequest(request);
+    }, onError: (e, s){
+      logger.shout("Headers:\n${request.headers}\n"
+                   "Cookies:\n${request.cookies}\n"
+                   "Body:\n${request.connectionInfo.remoteAddress}"
+      , e, s);
+    });
+  }
+
+
+}
 typedef void RequestHandler(Request request);
 
 Logger logger = new Logger('clean_backend');
@@ -157,7 +184,8 @@ class Backend {
     return HttpServer.bind(host, port).then((httpServer) {
       var router = new Router("http://$presentedHost", {});
       var requestNavigator = new RequestNavigator(httpServer.asBroadcastStream(), router);
-      return new Backend.config(httpServer, router, requestNavigator,
+      var safeNavigator = new SafeRequestNavigator(requestNavigator);
+      return new Backend.config(httpServer, router, safeNavigator,
           () => new HMAC(hashMethod, UTF8.encode(key)), logFailedRequest(HttpBodyHandler.processRequest));
     });
   }
