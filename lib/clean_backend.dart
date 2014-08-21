@@ -20,24 +20,23 @@ class ZonedRequestNavigator extends RequestNavigator {
   ZonedRequestNavigator(_incoming, _router):super(_incoming, _router);
 
   dynamic _makeHandlerZoned(handler){
-    zonedHandler(HttpRequest request, urlParams){
+    return (HttpRequest request, urlParams){
       Zone zone;
       runZoned((){
         zone = Zone.current;
         handler(request, urlParams);
       },
-      zoneValues: {#requestBody: {'body': null}},
+      zoneValues: {#requestBody: {'body': 'not setted'}},
        onError: (e, s){
         logger.shout("Handling request failed. Reuest details:",
                       data: {"Headers": request.headers,
                              "Cookies": request.cookies,
                              "Address": request.connectionInfo.remoteAddress,
-                             "Body": zone[#requestBody]['body']
+                             "Body": zone[#requestBody] is Map? zone[#requestBody]['body']: "not setted"
                             }
                             , error: e, stackTrace: s);
       });
-      }
-    return zonedHandler;
+      };
   }
 
   void registerHandler(String routeName, dynamic handler){
@@ -195,7 +194,6 @@ class Backend {
     return HttpServer.bind(host, port).then((httpServer) {
       var router = new Router("$presentedHost", {});
       var requestNavigator = new ZonedRequestNavigator(httpServer.asBroadcastStream(), router);
-//      var safeNavigator = new SafeRequestNavigator(requestNavigator);
       return new Backend.config(httpServer, router, requestNavigator,
           () => new HMAC(hashMethod, UTF8.encode(key)), logFailedRequest(HttpBodyHandler.processRequest));
     });
@@ -215,7 +213,11 @@ class Backend {
   Future prepareRequestHandler(HttpRequest httpRequest, Map urlParams,
     RequestHandler handler) {
     return _httpBodyExtractor(httpRequest).then((HttpBody body) {
-      Zone.current[#requestBody]['body'] = body.body;
+      // remember requests body in zone for the purposes of logging in case of an error.
+      // the make-it-safe 'if' statement is important for running tests.
+      if (Zone.current[#requestBody] is Map && Zone.current[#requestBody].hasKey('body')){
+        Zone.current[#requestBody]['body'] = body.body;
+      }
 
       if (_defaulHttpHeaders != null) {
         _defaulHttpHeaders.forEach((header) =>
