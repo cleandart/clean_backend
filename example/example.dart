@@ -54,6 +54,7 @@ class SimpleRequestHandler {
   }
 
   void failHandler(Request request){
+//    Zone.current[#requestBody]['body'] = 'body of failed request';
     new Future.delayed(new Duration(milliseconds: 100))
        .then((_) => throw new Exception('this will show them!'));
   }

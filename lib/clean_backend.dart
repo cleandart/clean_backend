@@ -21,15 +21,18 @@ class ZonedRequestNavigator extends RequestNavigator {
 
   dynamic _makeHandlerZoned(handler){
     zonedHandler(HttpRequest request, urlParams){
+      Zone zone;
       runZoned((){
+        zone = Zone.current;
         handler(request, urlParams);
       },
+      zoneValues: {#requestBody: {'body': null}},
        onError: (e, s){
-        print('tututu');
         logger.shout("Handling request failed. Reuest details:",
                       data: {"Headers": request.headers,
                              "Cookies": request.cookies,
-                             "Body": request.connectionInfo.remoteAddress
+                             "Address": request.connectionInfo.remoteAddress,
+                             "Body": zone[#requestBody]['body']
                             }
                             , error: e, stackTrace: s);
       });
@@ -54,11 +57,12 @@ logFailedRequest(processRequest){
   return (HttpRequest request, {Encoding defaultEncoding: UTF8}){
     return processRequest(request, defaultEncoding:defaultEncoding)
         .catchError((e,s){
-           logger.shout("Processing request failed. Reuest details:\n"
-                        "Headers:\n${request.headers}\n"
-                        "Cookies:\n${request.cookies}\n"
-                        "Body:\n${request.connectionInfo.remoteAddress}"
-           , e, s);
+          logger.shout("Processing request failed. Reuest details:",
+                        data: {"Headers": request.headers,
+                               "Cookies": request.cookies,
+                               "Address": request.connectionInfo.remoteAddress
+                              }
+                              , error: e, stackTrace: s);
         });
   };
 }
@@ -211,6 +215,7 @@ class Backend {
   Future prepareRequestHandler(HttpRequest httpRequest, Map urlParams,
     RequestHandler handler) {
     return _httpBodyExtractor(httpRequest).then((HttpBody body) {
+      Zone.current[#requestBody]['body'] = body.body;
 
       if (_defaulHttpHeaders != null) {
         _defaulHttpHeaders.forEach((header) =>
