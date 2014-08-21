@@ -3,8 +3,11 @@
 // BSD-style license that can be found in the LICENSE file.
 
 import 'dart:io';
+import 'dart:async';
 import 'package:clean_backend/clean_backend.dart';
 import 'package:clean_router/common.dart';
+import 'package:clean_logging/logger.dart';
+
 
 //TODO test example -> move them to tests
 class SimpleRequestHandler {
@@ -50,6 +53,11 @@ class SimpleRequestHandler {
       ..close();
   }
 
+  void failHandler(Request request){
+    new Future.delayed(new Duration(milliseconds: 100))
+       .then((_) => throw new Exception('this will show them!'));
+  }
+
   void handleDefault(Request request) {
     print('incoming default:$request');
 
@@ -61,6 +69,12 @@ class SimpleRequestHandler {
 }
 
 void main() {
+
+   Logger.ROOT.logLevel = Level.WARNING;
+   Logger.onRecord.listen((Map rec) {
+     print(rec);
+   });
+
   Backend.bind('0.0.0.0', 8080, "secret").then((backend) {
     SimpleRequestHandler requestHandler = new SimpleRequestHandler(backend);
 
@@ -68,7 +82,8 @@ void main() {
     backend.addRoute("resources", new Route('/resources/'));
     backend.addRoute("add_cookie", new Route("/add-cookie/"));
     backend.addRoute("get_cookie", new Route("/get-cookie/"));
-    backend.addRoute("static", new Route("/*"));
+    backend.addRoute("fail", new Route("/fail/"));
+    backend.addRoute("static", new Route("/static/*"));
 
     //Note: browser also calls for /favicon.ico
     //The order doesn't matter here
@@ -76,6 +91,7 @@ void main() {
     backend.addView('resources', requestHandler.handleHttpRequest);
     backend.addView('add_cookie', requestHandler.handleAuthenticateRequest);
     backend.addView('get_cookie', requestHandler.handleIsAuthenticatedRequest);
+    backend.addView('fail', requestHandler.failHandler);
     backend.addStaticView('static', '../test/www/');
     backend.addNotFoundView(requestHandler.handleDefault);
   });

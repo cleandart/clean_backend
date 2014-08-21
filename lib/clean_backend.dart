@@ -11,44 +11,51 @@ import 'package:crypto/crypto.dart';
 import 'package:http_server/http_server.dart';
 import 'package:clean_router/server.dart';
 import 'package:path/path.dart' as p;
-import 'package:logging/logging.dart';
-
-class SafeRequestNavigator implements RequestNavigator {
-
-  RequestNavigator _requestNavigator;
-
-  SafeRequestNavigator(this._requestNavigator);
-
-  void registerHandler(String routeName, dynamic handler){
-    _requestNavigator.registerHandler(routeName, handler);
-  }
-
-  void registerDefaultHandler(dynamic handler){
-    _requestNavigator.registerDefaultHandler(handler);
-  }
-
-  void processHttpRequest(HttpRequest request){
-    runZoned((){
-      _requestNavigator.processHttpRequest(request);
-    }, onError: (e, s){
-      logger.shout("Headers:\n${request.headers}\n"
-                   "Cookies:\n${request.cookies}\n"
-                   "Body:\n${request.connectionInfo.remoteAddress}"
-      , e, s);
-    });
-  }
-
-
-}
-typedef void RequestHandler(Request request);
+import 'package:clean_logging/logger.dart';
 
 Logger logger = new Logger('clean_backend');
+
+class ZonedRequestNavigator extends RequestNavigator {
+
+  ZonedRequestNavigator(_incoming, _router):super(_incoming, _router);
+
+  dynamic _makeHandlerZoned(handler){
+    zonedHandler(HttpRequest request, urlParams){
+      runZoned((){
+        handler(request, urlParams);
+      },
+       onError: (e, s){
+        print('tututu');
+        logger.shout("Handling request failed. Reuest details:",
+                      data: {"Headers": request.headers,
+                             "Cookies": request.cookies,
+                             "Body": request.connectionInfo.remoteAddress
+                            }
+                            , error: e, stackTrace: s);
+      });
+      }
+    return zonedHandler;
+  }
+
+  void registerHandler(String routeName, dynamic handler){
+    super.registerHandler(routeName, _makeHandlerZoned(handler));
+  }
+
+
+  void registerDefaultHandler(dynamic handler){
+    super.registerDefaultHandler(_makeHandlerZoned(handler));
+  }
+}
+
+typedef void RequestHandler(Request request);
+
 
 logFailedRequest(processRequest){
   return (HttpRequest request, {Encoding defaultEncoding: UTF8}){
     return processRequest(request, defaultEncoding:defaultEncoding)
         .catchError((e,s){
-           logger.shout("Headers:\n${request.headers}\n"
+           logger.shout("Processing request failed. Reuest details:\n"
+                        "Headers:\n${request.headers}\n"
                         "Cookies:\n${request.cookies}\n"
                         "Body:\n${request.connectionInfo.remoteAddress}"
            , e, s);
@@ -183,9 +190,9 @@ class Backend {
 
     return HttpServer.bind(host, port).then((httpServer) {
       var router = new Router("$presentedHost", {});
-      var requestNavigator = new RequestNavigator(httpServer.asBroadcastStream(), router);
-      var safeNavigator = new SafeRequestNavigator(requestNavigator);
-      return new Backend.config(httpServer, router, safeNavigator,
+      var requestNavigator = new ZonedRequestNavigator(httpServer.asBroadcastStream(), router);
+//      var safeNavigator = new SafeRequestNavigator(requestNavigator);
+      return new Backend.config(httpServer, router, requestNavigator,
           () => new HMAC(hashMethod, UTF8.encode(key)), logFailedRequest(HttpBodyHandler.processRequest));
     });
   }
