@@ -182,7 +182,7 @@ class Backend {
     if (hashMethod == null) hashMethod = new SHA256();
 
     return HttpServer.bind(host, port).then((httpServer) {
-      var router = new Router("http://$presentedHost", {});
+      var router = new Router("$presentedHost", {});
       var requestNavigator = new RequestNavigator(httpServer.asBroadcastStream(), router);
       var safeNavigator = new SafeRequestNavigator(requestNavigator);
       return new Backend.config(httpServer, router, safeNavigator,
