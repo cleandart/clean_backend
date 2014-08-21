@@ -61,6 +61,7 @@ class HttpRequestMock extends Mock implements HttpRequest {
   Uri uri;
   HttpHeaders headers = new HttpHeadersMock();
   HttpResponse response = new HttpResponseMock();
+  List<Cookie> cookies = [];
 
   HttpRequestMock(this.uri);
 }
