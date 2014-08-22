@@ -215,7 +215,7 @@ class Backend {
     return _httpBodyExtractor(httpRequest).then((HttpBody body) {
       // remember requests body in zone for the purposes of logging in case of an error.
       // the make-it-safe 'if' statement is important for running tests.
-      if (Zone.current[#requestBody] is Map && Zone.current[#requestBody].hasKey('body')){
+      if (Zone.current[#requestBody] is Map && (Zone.current[#requestBody] as Map).containsKey('body')){
         Zone.current[#requestBody]['body'] = body.body;
       }
 
