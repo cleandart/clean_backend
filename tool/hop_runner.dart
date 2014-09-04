@@ -12,10 +12,9 @@ import 'package:hop_docgen/hop_docgen.dart';
 import '../test/test_all.dart' as test_all;
 
 void main (List<String> args) {
-  var paths = ['lib/clean_backend.dart'];
 
-  addTask('docs', createDocGenTask(paths));
-  addTask('analyze', createAnalyzerTask(paths));
+  addTask('docs', createDocGenTask('../lib'));
+  addTask('analyze', createAnalyzerTask(['/lib/clean_backend.dart']));
   addTask('test', createUnitTestTask(test_all.run));
 
   runHop(args);
