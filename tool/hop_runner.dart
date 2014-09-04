@@ -13,8 +13,8 @@ import '../test/test_all.dart' as test_all;
 
 void main (List<String> args) {
 
-  addTask('docs', createDocGenTask('../lib'));
-  addTask('analyze', createAnalyzerTask(['/lib/clean_backend.dart']));
+  addTask('docs', createDocGenTask('lib/'));
+  addTask('analyze', createAnalyzerTask(['lib/clean_backend.dart']));
   addTask('test', createUnitTestTask(test_all.run));
 
   runHop(args);
