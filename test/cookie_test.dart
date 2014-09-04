@@ -9,7 +9,7 @@ import 'dart:convert';
 import 'package:http_server/http_server.dart';
 import 'package:crypto/crypto.dart';
 import 'package:unittest/unittest.dart';
-import 'package:unittest/mock.dart';
+import 'package:mock/mock.dart';
 import 'package:clean_backend/clean_backend.dart';
 import 'package:clean_router/server.dart';
 

@@ -10,7 +10,7 @@ import 'dart:convert';
 import 'package:http_server/http_server.dart';
 import 'package:crypto/crypto.dart';
 import 'package:unittest/unittest.dart';
-import 'package:unittest/mock.dart';
+import 'package:mock/mock.dart';
 import 'package:clean_backend/clean_backend.dart';
 import 'package:clean_router/server.dart';
 
@@ -111,7 +111,7 @@ void main() {
       var request = new HttpRequestMock(Uri.parse('/static/'));
 
       // when & then
-      backend.prepareRequestHandler(request, {'key':'value'}, expectAsync1((Request request) {
+      backend.prepareRequestHandler(request, {'key':'value'}, expectAsync((Request request) {
         expect(request.match, equals({'key':'value'}));
         expect(request.httpRequest.uri.path, equals('/static/'));
         expect(request.body, isNull);
@@ -128,7 +128,7 @@ void main() {
       backend.addDefaultHttpHeader("header_name", "header_value");
 
       // then
-      backend.prepareRequestHandler(request, {}, expectAsync1((Request request) {
+      backend.prepareRequestHandler(request, {}, expectAsync((Request request) {
         expect(request.response.headers.value("header_name"), equals("header_value"));
       }));
     });
