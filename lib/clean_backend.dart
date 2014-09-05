@@ -12,8 +12,11 @@ import 'package:http_server/http_server.dart';
 import 'package:clean_router/server.dart';
 import 'package:path/path.dart' as p;
 import 'package:clean_logging/logger.dart';
+import 'dart:math';
 
 Logger logger = new Logger('clean_backend');
+Logger requestLogger = new Logger('clean_backend.requests');
+Random r = new Random();
 
 class ZonedRequestNavigator extends RequestNavigator {
 
@@ -21,12 +24,21 @@ class ZonedRequestNavigator extends RequestNavigator {
 
   dynamic _makeHandlerZoned(handler){
     return (HttpRequest request, urlParams){
+      var id = new String.fromCharCodes(new List.generate(10, (e) => r.nextInt(26) + 65));
       Zone zone;
       runZoned((){
         zone = Zone.current;
+        requestLogger.info("Handling request", data: {
+          'id': zone[#requestInfo]['id'],
+          'headers': request.headers,
+          'cookies': request.cookies,
+          'address': request.connectionInfo.remoteAddress,
+          'requestedUri': request.requestedUri,
+          'body': zone[#requestBody] is Map? zone[#requestBody]['body']: 'not setted',
+        });
         handler(request, urlParams);
       },
-      zoneValues: {#requestBody: {'body': 'not setted'}},
+      zoneValues: {#requestBody: {'body': 'not setted'}, #requestInfo: {'id': id} },
        onError: (e, s){
         logger.shout("Handling request failed. Reuest details:",
                       data: {"Headers": request.headers,

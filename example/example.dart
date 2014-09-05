@@ -9,6 +9,8 @@ import 'package:clean_router/common.dart';
 import 'package:clean_logging/logger.dart';
 
 
+Logger logger = new Logger('example');
+
 //TODO test example -> move them to tests
 class SimpleRequestHandler {
   Backend backend;
@@ -61,6 +63,7 @@ class SimpleRequestHandler {
 
   void handleDefault(Request request) {
     print('incoming default:$request');
+    logger.warning('warning');
 
     request.response
       ..headers.contentType = ContentType.parse("text/html")
@@ -72,6 +75,15 @@ class SimpleRequestHandler {
 void main() {
 
    Logger.ROOT.logLevel = Level.WARNING;
+
+   // these two lines enable logging for each request
+   var x = new Logger('clean_backend.requests');
+   x.logLevel = Level.INFO;
+
+   // this line enables mapping requestId's to metaData...
+   Logger.getMetaData = () => Zone.current[#requestInfo] == null ?
+       {} : {'requestId': Zone.current[#requestInfo]['id']};
+
    Logger.onRecord.listen((Map rec) {
      print(rec);
    });
