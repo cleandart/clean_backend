@@ -16,7 +16,6 @@ class SimpleRequestHandler {
   Backend backend;
   SimpleRequestHandler(this.backend);
   void handleHttpRequest(Request request) {
-    print('incoming HttpRequest:$request');
     request.response
       ..headers.contentType = ContentType.parse("text/html")
       ..write('<body>Response to request.</body>')
@@ -85,7 +84,13 @@ void main() {
        {} : {'requestId': Zone.current[#requestInfo]['id']};
 
    Logger.onRecord.listen((Map rec) {
-     print(rec);
+     if(rec['fullSource']=='clean_backend.requests') {
+       print('message: ${rec['event']}');
+       print('data: ${rec['data']}');
+       print('meta: ${rec['meta']}');
+     } else {
+       print(rec);
+     }
    });
 
   Backend.bind('0.0.0.0', 8080, "secret").then((backend) {

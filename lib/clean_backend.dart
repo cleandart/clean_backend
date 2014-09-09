@@ -24,7 +24,7 @@ class ZonedRequestNavigator extends RequestNavigator {
 
   dynamic _makeHandlerZoned(handler){
     return (HttpRequest request, urlParams){
-      var id = new String.fromCharCodes(new List.generate(10, (e) => r.nextInt(26) + 65));
+      var id = new String.fromCharCodes(new List.generate(15, (e) => r.nextInt(26) + 65));
       Zone zone;
       runZoned((){
         zone = Zone.current;
@@ -34,19 +34,12 @@ class ZonedRequestNavigator extends RequestNavigator {
           'cookies': request.cookies,
           'address': request.connectionInfo.remoteAddress,
           'requestedUri': request.requestedUri,
-          'body': zone[#requestBody] is Map? zone[#requestBody]['body']: 'not setted',
         });
         handler(request, urlParams);
       },
-      zoneValues: {#requestBody: {'body': 'not setted'}, #requestInfo: {'id': id} },
+      zoneValues: {#requestInfo: {'id': id}},
        onError: (e, s){
-        logger.shout("Handling request failed. Reuest details:",
-                      data: {"Headers": request.headers,
-                             "Cookies": request.cookies,
-                             "Address": request.connectionInfo.remoteAddress,
-                             "Body": zone[#requestBody] is Map? zone[#requestBody]['body']: "not setted"
-                            }
-                            , error: e, stackTrace: s);
+        logger.shout("Handling request ${id} failed", error: e, stackTrace: s);
       });
       };
   }
@@ -225,11 +218,8 @@ class Backend {
   Future prepareRequestHandler(HttpRequest httpRequest, Map urlParams,
     RequestHandler handler) {
     return _httpBodyExtractor(httpRequest).then((HttpBody body) {
-      // remember requests body in zone for the purposes of logging in case of an error.
-      // the make-it-safe 'if' statement is important for running tests.
-      if (Zone.current[#requestBody] is Map && (Zone.current[#requestBody] as Map).containsKey('body')){
-        Zone.current[#requestBody]['body'] = body.body;
-      }
+      requestLogger.info("body for request", data:{'type': body.type,
+        'body': body.body});
 
       if (_defaulHttpHeaders != null) {
         _defaulHttpHeaders.forEach((header) =>
