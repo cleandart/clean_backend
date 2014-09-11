@@ -9,12 +9,13 @@ import 'package:clean_router/common.dart';
 import 'package:clean_logging/logger.dart';
 
 
+Logger logger = new Logger('example');
+
 //TODO test example -> move them to tests
 class SimpleRequestHandler {
   Backend backend;
   SimpleRequestHandler(this.backend);
   void handleHttpRequest(Request request) {
-    print('incoming HttpRequest:$request');
     request.response
       ..headers.contentType = ContentType.parse("text/html")
       ..write('<body>Response to request.</body>')
@@ -61,6 +62,7 @@ class SimpleRequestHandler {
 
   void handleDefault(Request request) {
     print('incoming default:$request');
+    logger.warning('warning');
 
     request.response
       ..headers.contentType = ContentType.parse("text/html")
@@ -72,8 +74,22 @@ class SimpleRequestHandler {
 void main() {
 
    Logger.ROOT.logLevel = Level.WARNING;
+
+   // these two lines enable logging for each request
+   (new Logger('clean_backend.requests')).logLevel = Level.INFO;
+
+   // this line enables mapping requestId's to metaData...
+   Logger.getMetaData = () => Zone.current[#requestInfo] == null ?
+       {} : {'requestId': Zone.current[#requestInfo]['id']};
+
    Logger.onRecord.listen((Map rec) {
-     print(rec);
+     if(rec['fullSource']=='clean_backend.requests') {
+       print('message: ${rec['event']}');
+       print('data: ${rec['data']}');
+       print('meta: ${rec['meta']}');
+     } else {
+       print(rec);
+     }
    });
 
   Backend.bind('0.0.0.0', 8080, "secret").then((backend) {

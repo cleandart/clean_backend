@@ -12,8 +12,11 @@ import 'package:http_server/http_server.dart';
 import 'package:clean_router/server.dart';
 import 'package:path/path.dart' as p;
 import 'package:clean_logging/logger.dart';
+import 'dart:math';
 
 Logger logger = new Logger('clean_backend');
+Logger requestLogger = new Logger('clean_backend.requests');
+Random r = new Random();
 
 class ZonedRequestNavigator extends RequestNavigator {
 
@@ -21,20 +24,22 @@ class ZonedRequestNavigator extends RequestNavigator {
 
   dynamic _makeHandlerZoned(handler){
     return (HttpRequest request, urlParams){
+      var id = new String.fromCharCodes(new List.generate(15, (e) => r.nextInt(26) + 65));
       Zone zone;
       runZoned((){
         zone = Zone.current;
+        requestLogger.info("Handling request", data: {
+          'id': zone[#requestInfo]['id'],
+          'headers': request.headers,
+          'cookies': request.cookies,
+          'address': request.connectionInfo.remoteAddress,
+          'requestedUri': request.requestedUri,
+        });
         handler(request, urlParams);
       },
-      zoneValues: {#requestBody: {'body': 'not setted'}},
+      zoneValues: {#requestInfo: {'id': id}},
        onError: (e, s){
-        logger.shout("Handling request failed. Reuest details:",
-                      data: {"Headers": request.headers,
-                             "Cookies": request.cookies,
-                             "Address": request.connectionInfo.remoteAddress,
-                             "Body": zone[#requestBody] is Map? zone[#requestBody]['body']: "not setted"
-                            }
-                            , error: e, stackTrace: s);
+        logger.shout("Handling request ${id} failed", error: e, stackTrace: s);
       });
       };
   }
@@ -213,11 +218,14 @@ class Backend {
   Future prepareRequestHandler(HttpRequest httpRequest, Map urlParams,
     RequestHandler handler) {
     return _httpBodyExtractor(httpRequest).then((HttpBody body) {
-      // remember requests body in zone for the purposes of logging in case of an error.
-      // the make-it-safe 'if' statement is important for running tests.
-      if (Zone.current[#requestBody] is Map && (Zone.current[#requestBody] as Map).containsKey('body')){
-        Zone.current[#requestBody]['body'] = body.body;
+      var reqId = 'empty';
+      if (Zone.current[#requestInfo] != null) {
+        reqId=Zone.current[#requestInfo]['id'];
       }
+      requestLogger.info("body for request",
+          data:{'id': reqId,
+          'type': body.type,
+          'body': body.body});
 
       if (_defaulHttpHeaders != null) {
         _defaulHttpHeaders.forEach((header) =>
