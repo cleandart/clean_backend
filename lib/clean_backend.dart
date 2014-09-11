@@ -218,8 +218,14 @@ class Backend {
   Future prepareRequestHandler(HttpRequest httpRequest, Map urlParams,
     RequestHandler handler) {
     return _httpBodyExtractor(httpRequest).then((HttpBody body) {
-      requestLogger.info("body for request", data:{'type': body.type,
-        'body': body.body});
+      var reqId = 'empty';
+      if (Zone.current[#requestInfo] != null) {
+        reqId=Zone.current[#requestInfo]['id'];
+      }
+      requestLogger.info("body for request",
+          data:{'id': reqId,
+          'type': body.type,
+          'body': body.body});
 
       if (_defaulHttpHeaders != null) {
         _defaulHttpHeaders.forEach((header) =>

@@ -76,8 +76,7 @@ void main() {
    Logger.ROOT.logLevel = Level.WARNING;
 
    // these two lines enable logging for each request
-   var x = new Logger('clean_backend.requests');
-   x.logLevel = Level.INFO;
+   (new Logger('clean_backend.requests')).logLevel = Level.INFO;
 
    // this line enables mapping requestId's to metaData...
    Logger.getMetaData = () => Zone.current[#requestInfo] == null ?
