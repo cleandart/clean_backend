@@ -243,9 +243,8 @@ class Backend {
       handler(request);
       return true;
     }, onError: (e, s) {
-      //TODO not sure if we want to log it or not beacuse we are using logFailedRequest which
-      // is already logging it
-      logger.info("Parsing of body was not succesfull", error: e, stackTrace: s);
+      // if we get here _httpBodyExtractor failed and because it is logFailedRequest
+      // so this error is already logged and request is already closed with bad request
     });
   }
 
