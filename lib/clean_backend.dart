@@ -60,13 +60,14 @@ typedef void RequestHandler(Request request);
 logFailedRequest(processRequest){
   return (HttpRequest request, {Encoding defaultEncoding: UTF8}){
     return processRequest(request, defaultEncoding:defaultEncoding)
-        .catchError((e,s){
-          logger.shout("Processing request failed. Reuest details:",
+        .catchError((e,s) {
+          logger.warning("Processing request failed. Reuest details:",
                         data: {"Headers": request.headers,
                                "Cookies": request.cookies,
                                "Address": request.connectionInfo.remoteAddress
                               }
                               , error: e, stackTrace: s);
+          throw e;
         });
   };
 }
@@ -238,6 +239,10 @@ class Backend {
 
       handler(request);
       return true;
+    }, onError: (e, s) {
+      //TODO not sure if we want to log it or not beacuse we are using logFailedRequest which
+      // is already logging it
+      logger.info("Parsing of body was not succesfull", error: e, stackTrace: s);
     });
   }
 
