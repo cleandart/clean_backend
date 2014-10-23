@@ -60,13 +60,17 @@ typedef void RequestHandler(Request request);
 logFailedRequest(processRequest){
   return (HttpRequest request, {Encoding defaultEncoding: UTF8}){
     return processRequest(request, defaultEncoding:defaultEncoding)
-        .catchError((e,s){
-          logger.shout("Processing request failed. Reuest details:",
+        .catchError((e,s) {
+          logger.warning("Processing request failed. Reuest details:",
                         data: {"Headers": request.headers,
                                "Cookies": request.cookies,
-                               "Address": request.connectionInfo.remoteAddress
+                               "Address": (request.connectionInfo == null)?
+                                     'null connectionInfo'
+                                   :
+                                     request.connectionInfo.remoteAddress
                               }
                               , error: e, stackTrace: s);
+          throw e;
         });
   };
 }
@@ -238,6 +242,9 @@ class Backend {
 
       handler(request);
       return true;
+    }, onError: (e, s) {
+      // if we get here _httpBodyExtractor failed and because it is logFailedRequest
+      // so this error is already logged and request is already closed with bad request
     });
   }
 
