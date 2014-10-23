@@ -64,7 +64,10 @@ logFailedRequest(processRequest){
           logger.warning("Processing request failed. Reuest details:",
                         data: {"Headers": request.headers,
                                "Cookies": request.cookies,
-                               "Address": request.connectionInfo.remoteAddress
+                               "Address": (request.connectionInfo == null)?
+                                     'null connectionInfo'
+                                   :
+                                     request.connectionInfo.remoteAddress
                               }
                               , error: e, stackTrace: s);
           throw e;
