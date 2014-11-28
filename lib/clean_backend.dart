@@ -26,6 +26,14 @@ class ZonedRequestNavigator extends RequestNavigator {
     return (HttpRequest request, urlParams){
       var id = new String.fromCharCodes(new List.generate(15, (e) => r.nextInt(26) + 65));
       Zone zone;
+      Stopwatch stopWatch = new Stopwatch();
+      stopWatch.start();
+
+      logTime() {
+        stopWatch.stop();
+        requestLogger.info("Handling request with id: ${id} took ${stopWatch.elapsed}");
+      }
+
       runZoned((){
         zone = Zone.current;
         requestLogger.info("Handling request", data: {
@@ -36,10 +44,12 @@ class ZonedRequestNavigator extends RequestNavigator {
           'requestedUri': request.requestedUri,
         });
         handler(request, urlParams);
+        logTime();
       },
       zoneValues: {#requestInfo: {'id': id}},
        onError: (e, s){
         logger.shout("Handling request ${id} failed", error: e, stackTrace: s);
+        logTime();
       });
       };
   }
