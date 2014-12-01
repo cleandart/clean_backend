@@ -26,6 +26,14 @@ class ZonedRequestNavigator extends RequestNavigator {
     return (HttpRequest request, urlParams){
       var id = new String.fromCharCodes(new List.generate(15, (e) => r.nextInt(26) + 65));
       Zone zone;
+      Stopwatch stopWatch = new Stopwatch();
+      stopWatch.start();
+
+      logTime() {
+        stopWatch.stop();
+        requestLogger.info("Handling request with id: ${id} took ${stopWatch.elapsed}");
+      }
+
       runZoned((){
         zone = Zone.current;
         requestLogger.info("Handling request", data: {
@@ -35,12 +43,13 @@ class ZonedRequestNavigator extends RequestNavigator {
           'address': request.connectionInfo.remoteAddress,
           'requestedUri': request.requestedUri,
         });
-        handler(request, urlParams);
+        // Make it a Future, so that the duration can be logged
+        return new Future.sync(() => handler(request, urlParams));
       },
       zoneValues: {#requestInfo: {'id': id}},
        onError: (e, s){
         logger.shout("Handling request ${id} failed", error: e, stackTrace: s);
-      });
+      }).whenComplete(logTime);
       };
   }
 
@@ -240,8 +249,10 @@ class Backend {
           httpRequest.headers, httpRequest, urlParams);
       request.authenticatedUserId = getAuthenticatedUser(request.httpRequest.cookies);
 
-      handler(request);
-      return true;
+      // We want to log duration of the request, so in order to determine when request ends we
+      // transform it into a Future if necessary
+      return new Future.sync(() => handler(request))
+       .then((_) => true);
     }, onError: (e, s) {
       // if we get here _httpBodyExtractor failed and because it is logFailedRequest
       // so this error is already logged and request is already closed with bad request
