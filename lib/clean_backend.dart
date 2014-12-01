@@ -43,13 +43,13 @@ class ZonedRequestNavigator extends RequestNavigator {
           'address': request.connectionInfo.remoteAddress,
           'requestedUri': request.requestedUri,
         });
-        // Make it a Future, so that the duration can be logged
-        return new Future.sync(() => handler(request, urlParams));
+        handler(request, urlParams);
+        request.response.done.whenComplete(logTime);
       },
       zoneValues: {#requestInfo: {'id': id}},
        onError: (e, s){
         logger.shout("Handling request ${id} failed", error: e, stackTrace: s);
-      }).whenComplete(logTime);
+      });
       };
   }
 
@@ -249,10 +249,8 @@ class Backend {
           httpRequest.headers, httpRequest, urlParams);
       request.authenticatedUserId = getAuthenticatedUser(request.httpRequest.cookies);
 
-      // We want to log duration of the request, so in order to determine when request ends we
-      // transform it into a Future if necessary
-      return new Future.sync(() => handler(request))
-       .then((_) => true);
+      handler(request);
+      return true;
     }, onError: (e, s) {
       // if we get here _httpBodyExtractor failed and because it is logFailedRequest
       // so this error is already logged and request is already closed with bad request
