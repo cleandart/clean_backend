@@ -18,6 +18,10 @@ Logger logger = new Logger('clean_backend');
 Logger requestLogger = new Logger('clean_backend.requests');
 Random r = new Random();
 
+/**
+ * Works just like [RequestNavigator], except that its handlers are wrapped in a [Zone],
+ * and some additional logs.
+ */
 class ZonedRequestNavigator extends RequestNavigator {
 
   ZonedRequestNavigator(_incoming, _router):super(_incoming, _router);
@@ -65,12 +69,15 @@ class ZonedRequestNavigator extends RequestNavigator {
 
 typedef void RequestHandler(Request request);
 
-
+/**
+ * Returns a function, which processes request using [processRequest], and if processing fails,
+ * request details are logged.
+ */
 logFailedRequest(processRequest){
   return (HttpRequest request, {Encoding defaultEncoding: UTF8}){
     return processRequest(request, defaultEncoding:defaultEncoding)
         .catchError((e,s) {
-          logger.warning("Processing request failed. Reuest details:",
+          logger.warning("Processing request failed. Request details:",
                         data: {"Headers": request.headers,
                                "Cookies": request.cookies,
                                "Address": (request.connectionInfo == null)?
@@ -84,6 +91,10 @@ logFailedRequest(processRequest){
   };
 }
 
+/**
+ * Simple wrapper for important parts of [HttpRequest], [HttpResponse], [HttpHeaders] and
+ * matched parameters from path
+ */
 class Request {
   final String type;
   final dynamic body;
@@ -135,6 +146,10 @@ String toCookieString(value) =>
 dynamic parseCookieString(String str) =>
     JSON.decode(UTF8.decode(CryptoUtils.base64StringToBytes(str)));
 
+/**
+ * A wrapper for [HttpServer], handles [HttpRequest]s. Provides convenient addition of [HttpRequest]
+ * handlers per route. Manages routing requests to proper routes internally.
+ */
 class Backend {
   static final String COOKIE_PATH = "/";
   static final bool COOKIE_HTTP_ONLY = true;
@@ -267,7 +282,8 @@ class Backend {
   }
 
   /**
-   * Adds [handler] for a particular [routeName].
+   * Adds [handler] for a particular [routeName]. Priorly, a [Route] with [routeName] must be added,
+   * see [addRoute].
    */
   void addView(String routeName, RequestHandler handler) {
     _requestNavigator.registerHandler(routeName, (httpRequest, urlParams)
@@ -317,6 +333,7 @@ class Backend {
     _notFoundViewHandler = handler;
   }
 
+  /// Signs a [msg] using HMAC
   String sign(String msg) {
     HMAC hmac = _hmacFactory();
     _stringToHash(msg, hmac);
@@ -360,6 +377,9 @@ class Backend {
     else return toCookieString({'userID': userId, 'signature': sign(userId)});
   }
 
+  /**
+   * Generates a cookie for a [userId] and authenticates the user
+   */
   void authenticate(Request request, String userId) {
     Cookie cookie = new Cookie('authentication', _toAuthenticationValue(userId));
     cookie.expires = new DateTime.now().add(new Duration(days: 365));
@@ -369,6 +389,9 @@ class Backend {
     request.authenticatedUserId = userId;
   }
 
+  /**
+   * Checks signature and gets authenticated user based on a cookie
+   */
   String getAuthenticatedUser(List<Cookie> cookies) {
     for (Cookie cookie in cookies) {
       if (cookie.name == 'authentication') {
@@ -382,6 +405,9 @@ class Backend {
     return null;
   }
 
+  /**
+   * Deletes the cookie - sends a cookie with instant expiration
+   */
   void logout(Request request) {
     Cookie cookie = new Cookie('authentication', _toAuthenticationValue(null));
     cookie.expires = new DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
